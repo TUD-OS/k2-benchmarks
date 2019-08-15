@@ -1,0 +1,139 @@
+This directory that contains the scripts used for extracting the latency 
+behavior of Linux I/O schedulers and K2 under different settings of block size, 
+workload etc. The scenario is as follows: several low-priority background 
+processes create load on the drive. To do so, they use asynchronous I/O. Another 
+type of process that is running simultaneously has got a high I/O priority, but 
+waits 2ms after each request before issuing a new one. Since a hypothetical
+real-time application needs its results immediately, the corresponding fio job
+uses synchronous I/O. Because there should be some contention (so that also
+the hw-queue-local I/O schedulers like Kyber) can do something, all processes
+are run on the same core. This is not an issue for the drives tested so far, 
+since one CPU core sufficed to saturate the devices. If you wish to spread
+fio workers among multiple CPUs and hence hardware queues, you have to set
+the CPU affinity and the CPU sharing policy of the jobs in the fio configuration
+file as described in the documentation of fio. Each combination of I/O
+scheduler, workload type and block size defines a test case. During each test
+case, the latency of real-time I/O requests is recorded for a series of 
+background bandwidth rates. For every background bandwidth rate, a FIO benchmark
+that runs for 10s is executed.
+
+Prior to executing the scripts, the user should take a look in the head of the
+executables and adapt the configuration space that will be tested. The amount
+of options for I/O schedulers, workload and block sizes to be tested can be
+set by defining the corresponding shell variables. Particularly, the output
+directory should be checked.
+
+All scripts require a specification of the initial state of the target device
+before starting the actual fio tests. Currently, there are three options for
+device initialization: When fully trimmed, all blocks on the target device will
+be discarded using the blkdiscard command. The opposite of this is a full disk
+where every block of the SSD will be marked as allocated by initializing the
+whole device with zeroes. The third option is a tradeoff of both, where the
+first 50% of the device are allocated, while the second half is trimmed. You can
+specify either of the states by passing certain command line switches as the
+first argument to the benchmark scripts. Use -t, -f and -h to run the tests on
+a fully trimmed, fully allocated, or half-trimmed drive respectively.
+
+During running the benchmarks, directories with trace files of the kernel will
+be created. These directories can consume up to 50GB of space, so make sure
+that there is some spare space left on your disk. However, the raw trace files
+will be deleted after the tests completed successfully, so the loss of free
+space should not be permanent. If you abort the benchmarks or if the scripts
+are terminated abnormally in any other way, the user is responsible for cleaning
+up any residuals in form of unused trace directories (they are named seq??? with
+the question mark replaced by a number).
+
+
+File list
+---------
+
+run_bench                  - Main benchmark script. Outputs a file tree 
+                             containing I/O latency tables for each test case.
+			     Takes three arguments: the first one is the initial
+			     drive state as described above (mandatory). The
+			     second parameter is the ratio of read vs. write
+			     requests for mixed workloads. Here the percentage
+			     of read requests is specified. This parameter is
+			     mandatory. Lastly, the queue depth to be used with
+			     the K2 scheduler can be set. This setting is
+			     optional. If not given, and no K2 shortcut is used
+			     (see the SCHEDS variable in the script), the 
+			     inflight queue depth of K2 defaults to 32.
+
+			     For example the call "./run_bench -t 75 64" will
+			     start the latency benchmarks for the combinations
+			     defined in the script on a fully trimmed device,
+			     with a read ratio of 75% for mixed workloads and
+			     an inflight queue depth of 64 in case the K2 I/O
+			     scheduler is used.
+
+run_bench_multrt           - Similar to run_bench. However, in this case, two
+                             equal real-time applications with the same I/O
+			     priority are spawned. Latency reports are created
+			     for both of them. Note that in this setup, the RT 
+			     jobs will always carry out random reads, while the
+			     background workload may change. The read-write 
+			     ratio argument is missing here; this script uses
+			     a fixed ratio of 80% reads for mixed workload
+
+run_bench_multrt_mixedprio - Equal to run_bench_multrt, with the only exception
+                             that the real-time applications are running with
+			     distinct priorities. The second RT job is slightly
+			     less important than the first one.
+
+*.fio                       - FIO benchmark templates used by the scripts. They
+                              can not be executed stand alone. If you want to
+			      apply deep changes to the software, please refer 
+			      to the documentation of FIO.
+
+*.py                        - Python 3 scripts for transforming the CTF trace
+                              file output into CSV data files that are easier to
+			      handle for postprocessing. In these files, the
+			      tracing information is parsed and the overall 
+			      latency as well as the latency inside the Linux 
+			      block layer is computed for each request and 
+			      stored in the CSV output file.
+
+
+Output files
+------------
+
+All benchmark scripts will create a hierarchy of directories with the output
+files. Each test case (i.e. each combination of I/O scheduler, workload type and
+block size) will have a "leaf" directory containing the actual results. There
+are several .fio files which are the concrete fio benchmark files generated 
+from the templates in this directory. Remember that each test case is executed 
+with varying background load, hence there is a fio file for each background
+bandwidth. Since every fio file is executed once by FIO, there is always a
+corresponding .out file that contains the final benchmark summary messages that
+FIO prints right before it exits.
+
+The actual latency values collected are stored in the file data.csv which
+holds the overall request latencies (i.e. from bio submission until bio 
+completion) and data_schedtime.csv that stores the block layer latency (i.e. the
+time from submitting a bio until the request that contains this bio is
+delegated to the device). If there are two real-time applications, the file 
+names of the CSV files are modified to leverage a clear identification of which
+data file belongs to which real-time I/O job. Both of these csv files have a 
+head line consisting of the target bandwidth rates for a SINGLE background 
+process. In the state that these scripts are shipped, there are three background
+processes, so the overall target latency can be obtained by multiplying the 
+corresponding header field by 3. The column below each header field contains the
+latency values of the real-time application(s) collected during the benchmark.
+Note that due to the mechanism of a fixed inter-request time of the real-time
+application, the amount of real-time requests that can be served during each
+fio run will fluctuate since the service time on the device is not 
+deterministic. As a consequence, the columns of the data files differ in 
+length. Latency values that are not present are represented by an empty string.
+
+Lastly, there is a *_xlab.csv. The purpose of these tables is to record the
+target bandwidth for each fio run and the throughput that was actually achieved.
+Here, both values represent overall bandwidth values. No multiplication is
+needed. The first value pair in the xlab file belongs to the first latency
+column of the data / data_schedtime files in the same directory. Note that 
+sometimes (especially for low load), the target bandwidth is actually lower
+than the throughput seen in the tests. The reason for this is that the target
+bw refers to the background processes only. Even though it issues requests
+at a low rate, the real-time application itself is responsible for creating 
+some load that is also accounted into the overall throughput achieved. This
+effect is particularly strong for large block sizes.

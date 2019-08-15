@@ -1,0 +1,30 @@
+#! /usr/bin/ksh
+
+# A simple test script that should reproduce the vendor's specification for
+# random reads.
+#
+# Copyright (c) 2019 Till Miemietz
+
+# name of the device to be benchmarked. E.g. "nvme0n1" refers to the device file
+# /dev/nvme0n1
+DEVNAME="nvme0n1"
+
+mountpoint -q /mnt
+if [ $? -eq 0 ]
+  then
+  echo "Umount volume at /mnt before proceeding"
+  exit 1
+fi
+
+echo none > /sys/block/${DEVNAME}/queue/scheduler
+echo "y" | mkfs -q /dev/${DEVNAME}
+mount /dev/${DEVNAME} /mnt
+
+# it seems that the IOPS for randread can only be reached when doing random
+# reads on a rather small file
+dd if=/dev/zero of=/mnt/testfile bs=1024k oflag=direct count=8000
+sync
+fio randread.fio
+
+# clean up
+umount /mnt

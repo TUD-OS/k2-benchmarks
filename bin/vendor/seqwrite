@@ -1,0 +1,10 @@
+#! /usr/bin/ksh
+
+# Simple script to replicate the vendor's specifications for sequential writes.
+#
+# Copyright (c) 2019 Till Miemietz
+DEVNAME="nvme0n1"
+
+# sleep a minute to cool down the drive from previous workload
+sleep 60
+dd if=/dev/zero of=/dev/${DEVNAME} bs=64k oflag=direct count=131072

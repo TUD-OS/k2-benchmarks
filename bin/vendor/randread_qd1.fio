@@ -1,0 +1,25 @@
+# fio workload file for reproducing the vendor's specifications for random      
+# reads, using a queue depth of 1 and only a single thread.                    
+#                                                                               
+# In this case, the fio benchmark file does not come with an enclosing shell    
+# script. To change the device under test, alter the field "filename".          
+#                                                                               
+# Copyright (c) 2019 Till Miemietz 
+
+[global]
+    filename=/dev/nvme0n1        # file operated upon
+    ioscheduler=none             # do not set an I/O scheduler
+    rw=randread
+    bs=4k
+    runtime=10                   # time limit for benchmark in seconds
+    time_based=1                 # loop over workload if finished before runtime
+
+[bgload1]
+    name=bgload1
+    numjobs=1                    # no. of instances to spawn for this workload
+    ioengine=libaio              # simulate background threads with aio for
+                                 # maximum stressing of the SSD
+    iodepth=1
+    direct=1                     # direct I/O to compute realistic values
+    cpumask=8                    # run on CPU no. 3
+    cpus_allowed_policy=split    # allow CPU sharing (needed to run on one c.)

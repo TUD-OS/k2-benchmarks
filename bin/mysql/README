@@ -1,0 +1,39 @@
+This is the README for the macrobenchmarks of K2 using sysbench's OLTP read-only 
+benchmark. There are two scripts that both execute the same benchmark but with 
+different background loads. A single test is run multiple times with different 
+I/O schedulers. The output comes in form of a single result directory containing
+the benchmark summaries that sysbench produces. The relevant latency parameters
+used in the paper can be directly found in these output files (min. latency, 
+max latency, average latency, 95th percentile). The number of participating I/O 
+schedulers, the device used for testing and the location of the results can be 
+configured by changing the corresponding variables at the beginning of both 
+shell scripts. Do not worry if the tests take some time, creating a database of
+the size used in the benchmarks is a time-consuming process and this is done for
+every I/O scheduler.
+In order to work correctly, the K2 kernel module must be installed and ready to
+be loaded via modprobe. To setup a sufficiently realistic environment, the 
+database used for testing as well as the test files for generating background 
+load take a rather large amount of space. To avoid any size issues,
+the testing device should have a capacity of 200GiB or more. In order to run
+the test successfully, several settings for mysql have to be done, such as
+adapting the I/O priority of the daemon, or changing the MySQL data directory.
+These steps can be carried out with the script setup_sql. Execute this 
+program ONCE before starting the macro benchmarks for the first time.
+
+WARNING: DO NOT EXECUTE ANY OF THE SCRIPTS ON A SYSTEM WITH A PRODUCTIVE MYSQL
+         SYSTEM. DOING SO WILL RESULT IN A DESTRUCTION OF EXISTING DATABASES!!!
+
+
+File list
+---------
+
+Neither of the scripts take any arguments.
+
+setup_sql - Setup script for the macro benchmarks. To be executed once before 
+            the first run of the test scripts.
+
+run_sql_ro_ro - Execute the OLTP read-only benchmark of sysbench with a
+                read-only background load.
+	
+run_sql_ro_rw - Execute the OLTP read-only benchmark of sysbench with a         
+                mixed read and write background load.

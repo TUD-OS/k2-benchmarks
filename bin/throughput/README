@@ -1,0 +1,50 @@
+Scripts in this subdirectory are meant to evaluate the maximum throughput that
+can be achieved with the existing I/O schedulers of the Linux kernel as well as
+with K2 under varying load patterns and block sizes. Both scripts will create a
+tree of directories with each leaf of this tree containing the results of one
+benchmark run (e.g. for BFQ under 4K randreads). The name of the root of these 
+trees can be set with the BASEDIR variable. In default configuration, it 
+contains a date to create unique names. 
+At the start of each script there are several shell variables that can be used 
+as tunable to configure the benchmarks and to restrict the combinations of 
+I/O schedulers, block sizes etc. that should be tried out. As of now, the 
+settings are done appropriately for a Samsung 970evo drive. If your test setup 
+differs, feel free to change these configurations. The start of the actual code 
+is clearly marked in each script.
+
+
+File list
+---------
+
+run_tp_bench - A script that tries to achieve maximum throughput in a similar
+               test configuration as used for the latency measurements in the
+	       micro directory. It takes a list of workload mode, block size
+	       and I/O scheduler and carries out the throughput for each 
+	       possible combination of these parameters. If the K2 scheduler is
+	       also used with this script (which is possible but not intended;
+	       see k2_qd_bench), one can use the first command line parameter to
+	       pass the inflight queue depth that should be used for the tests.
+               The parameter will be ignored if K2 is not benchmarked.
+	       Each leaf of the result directory tree will contain .out files
+	       that are a copy of the messages that fio prints to the console.
+	       The achieved throughput can be derived from these files.
+
+	       Syntax: ./run_tp_bench [queue depth for K2]
+
+k2_qd_bench  - This shell script is used to evaluate the impact of different 
+               inflight queue depths on the throughput that the K2 I/O scheduler
+	       is able to achieve. To use this program, the K2 kernel module
+	       has to be installed. For each pair of workload and block size
+	       that can be set as described above, k2_qd_bench will iterate over
+	       several queue depths and record the bandwidth seen for this test
+	       case. The results in the output directory tree are stored in the
+	       form of CSV files which contain value pairs of queue depth and
+	       achieved throughput. This script does not take any command line
+	       arguments. For a list of modifiable parameters, take a look at
+	       the head of the code.
+
+	       Syntax: ./k2_qd_bench
+
+tpbench.fio  - Template for a fio benchmark file used by both executable 
+               scripts. Unless you want to apply deep changes to the set 
+	       setting, this file should not be touched.

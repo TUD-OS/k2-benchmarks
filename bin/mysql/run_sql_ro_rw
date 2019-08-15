@@ -1,0 +1,205 @@
+#! /usr/bin/ksh
+
+#
+# Benchmark for testing Sysbench's read-only OLTP mysql benchmark with 
+# different I/O schedulers. This script requires root privileges for execution.
+# In this script, a read-write background load is created.
+#
+# mysql user root password: root
+#
+# keep in mind to disable apparmor for mysql service for mysqld --initialize
+#
+# monitor disk load via command: iostat -dx /dev/nvme0n1 1
+#
+# Copyright (c) 2019 Till Miemietz
+#
+
+# the device name under test. For instance "nvme0n1" refers to the device
+# found in /dev/nvme0n1
+DEVNAME="nvme0n1"
+
+# root directory for all benchmark results. Change this to dump result files
+# at another location. Make sure that you have write permissions for the 
+# directory specified.
+DATE=`date +%Y%m%d%H%M%S`
+BASEDIR="/home/benchmarks/mysql_res_ro_rw_$DATE"
+
+# the collection of I/O schedulers to test in this run. Multiple schedulers
+# must be separated with a space. The comment line below shows
+# SCHEDS="bfq mq-deadline kyber none k2"
+SCHEDS="bfq"
+
+################################################################################
+#                         START OF ACTUAL SCRIPT                               #
+################################################################################
+
+# first clear mountpoint
+mountpoint -q /mnt
+if [ $? -eq 0 ]
+  then
+  echo "Umount volume at /mnt before proceeding"
+  exit 1
+fi
+
+# try to load the K2 module. If it is not present, exit with an error message
+modprobe k2
+lsmod | grep "k2" > /dev/null
+if [ $? -ne 0 ]
+  then
+  echo "FATAL: could not load K2 kernel module."
+  exit 2
+fi
+
+# create the result directory
+mkdir $BASEDIR
+# move to the root directory to avoid clash when unmounting volumes again
+cd /
+
+for SCHED in $SCHEDS
+  do
+  # announce test case
+  echo "#"
+  echo "# Running MySQL (ro) OLTP benchmark with I/O scheduler $SCHED"
+  echo "# Background load: read-only"
+  echo "#"
+  
+  # set I/O scheduler to current value
+  echo $SCHED > /sys/block/${DEVNAME}/queue/scheduler
+
+  # configure the I/O scheduler for low latencies
+  case "$SCHED" in
+    kyber )
+      echo 2000 > /sys/block/${DEVNAME}/queue/iosched/read_lat_nsec
+      echo 10000 > /sys/block/${DEVNAME}/queue/iosched/write_lat_nsec;;
+    bfq )
+      echo 0 > /sys/block/${DEVNAME}/queue/iosched/slice_idle
+      # no strict guarantees, would destroy the effect of libaio
+      echo 2 > /sys/block/${DEVNAME}/queue/iosched/fifo_expire_async
+      echo 1 > /sys/block/${DEVNAME}/queue/iosched/fifo_expire_sync;;
+    # additional settings for deadline are not improving latency / throughput
+    # mq-deadline )
+      # disable low deadlines for testing
+      # echo 2 > /sys/block/${DEVNAME}/queue/iosched/write_expire
+      # echo 1 > /sys/block/${DEVNAME}/queue/iosched/read_expire
+      # echo 1 > /sys/block/${DEVNAME}/queue/iosched/fifo_batch;;
+    k2 )
+      echo 8 > /sys/block/${DEVNAME}/queue/iosched/max_inflight
+  esac
+
+  # create a new file system and mount it (to asure that all benchmarks find
+  # the drive in the same state)
+  echo "y" | mkfs.ext4 -q /dev/${DEVNAME}
+  mount /dev/${DEVNAME} /mnt
+  chmod 777 /mnt                      # needed by SQL daemon to create files
+
+  # initialize the database daemon
+  echo "Initializing database..."
+  mysqld --initialize-insecure
+  # creating the testing database for each scheduler will take some time.
+  # if you are inpatient, you can abort the program during the OLTP benchmark
+  # (the benchmark start will be announced). then the database is still running.
+  # you can now shut down the daemon and save the database files located in /mnt
+  # to a safe spot. Afterwards you may comment the code for initializing the
+  # database and uncomment the code below to simply copy the same database 
+  # into /mnt for following tests. Also, there are more lines to comment below! 
+  # Copying is much faster than creating structured data via SQL statements. 
+  # However, if you feel uncomfortable with this hacky option, simply run the 
+  # benchmarks over night.
+  #
+  # fetch backup of database instead of creating a new one
+  # mkdir -p /tmp/mnt
+  # mount /dev/sdb /tmp/mnt
+  # cp -rp /tmp/mnt/sql /mnt
+  sync
+  systemctl start mysql.service
+
+  # search for processes related to sql and boost their priority
+  # do this right after db startup to catch all new children
+  # ATTENTION: this alone does not suffice for proper priority settings. You
+  # will also have to change the ioprio in the MySQL's systemd file as described
+  # in the README
+  PROCS=`ps -ef | grep sqld | nawk '
+      BEGIN { pid_list = ""; }
+
+      {
+        # do not incude the grep from the shell command in the list of
+        # promoted processes!
+        if ($8 == "grep") {
+            next;
+        }
+
+        if (pid_list != "") {
+            pid_list = pid_list " ";    
+        }
+        pid_list = pid_list $2;
+      }
+
+      END { print(pid_list); }
+  '`
+
+  # drop caches to avoid measuring the page cache instead of real drive accesses
+  echo 3 > /proc/sys/vm/drop_caches 
+  for PROC in $PROCS
+    do
+    echo "pid: $PROC"
+    ionice -c 1 -n 0 -p $PROC
+  done
+  
+  # comment both statements below if you are copying in an existing database
+  mysql -u root -e "create database sysbench"
+  sysbench /usr/local/share/sysbench/oltp_read_only.lua --table-size=200000000 --rand-type=uniform --rand-seed=1 --rate=100 --db-driver=mysql --mysql-db=sysbench --mysql-user=root prepare
+
+  cd /
+
+  # create files for background load
+  echo "Creating load files..."
+  dd if=/dev/zero of=/mnt/file1 bs=1024k count=8000
+  dd if=/dev/zero of=/mnt/file2 bs=1024k count=8000
+  dd if=/dev/zero of=/mnt/file3 bs=1024k count=8000
+  dd if=/dev/zero of=/mnt/file4 bs=1024k count=8000
+  dd if=/dev/zero of=/mnt/file5 bs=1024k count=8000
+  dd if=/dev/zero of=/mnt/file6 bs=1024k count=8000
+  dd if=/dev/zero of=/mnt/file7 bs=1024k count=8000
+  dd if=/dev/zero of=/mnt/file8 bs=1024k count=8000
+  sync
+
+  # drop caches to obtain realistic drive access latencies
+  echo 3 > /proc/sys/vm/drop_caches 
+
+  # start some processes that read from the load files. since dd uses sync I/O  
+  # several load generators are needed to create a demanding workload. 
+  dd if=/mnt/file1 of=/dev/null iflag=direct bs=64k &
+  dd if=/mnt/file2 of=/dev/null iflag=direct bs=64k &
+  dd if=/mnt/file3 of=/dev/null iflag=direct bs=64k &
+  dd if=/mnt/file4 of=/dev/null iflag=direct bs=64k &
+  dd if=/mnt/file5 of=/dev/null iflag=direct bs=64k &
+  dd if=/mnt/file6 of=/dev/null iflag=direct bs=64k &
+  dd if=/mnt/file7 of=/dev/null iflag=direct bs=64k &
+  dd if=/mnt/file8 of=/dev/null iflag=direct bs=64k &
+
+  # also start some write background load...
+  # this is async I/O, so one process alone is enough to saturate the drive
+  dd if=/dev/zero of=/mnt/file9 bs=64k count=20000 oflag=direct&
+  
+  echo "Running benchmark..."
+  sysbench /usr/local/share/sysbench/oltp_read_only.lua --table-size=200000000 --threads=1 --rand-type=uniform --rand-seed=1 --time=20 --rate=20 --db-driver=mysql --mysql-db=sysbench --mysql-user=root --histogram --verbosity=5 --report-interval=1 run > ${BASEDIR}/${SCHED}.res &
+
+  # PID of sysbench program
+  SBPID=$!
+
+  # set the I/O priority of the sysbench process to real-time (this should 
+  # actually have no impact, since all drive accesses are carried out by
+  # the MySQL daemon)
+  ionice -c 1 -n 0 -p $SBPID
+
+  # wait for the benchmark to finish and kill the background processes
+  wait $SBPID
+  killall dd
+
+  # shutdown everything to have a clean environment for the next run
+  systemctl stop mysql.service
+  sync
+  echo "sql database stopped..."
+  wait 5	# shutting down everything may take a few seconds
+  umount /mnt
+done

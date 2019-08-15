@@ -1,0 +1,413 @@
+#! /usr/bin/ksh
+
+#
+# Shell script for running a fio benchmark with a real-time scenario and 
+# measure latency values for different I/O schedulers, workload types and
+# block sizes.
+# 
+# arg 1: Mandatory. Indicates the initialization state of the disk. Use:
+#        -f to run the benchmarks on a disk completely filled with zeroes
+#           (all blocks allocated)
+#        -h to run the benchmarks on a disk with only the first half filled
+#        -t to run the benchmarks on a completely trimmed disk (all blocks free)
+#
+# arg 2: Mandatory. Specifies the share of read requests for mixed workload in 
+#        percent.
+#
+# arg 3: Optional. Queue depth to use for the K2 scheduler. To be specified as 
+#        a plain integer value.
+#
+# Copyright (c) 2018, 2019 Till Miemietz
+#
+
+# the name of the device under test. For instance "nvme0n1" refers to the device
+# found in /dev/nvme0n1
+DEVNAME="nvme0n1"
+
+# root directory for all benchmark results. Change this to dump result files
+# at another location. Make sure that you have write permissions for the 
+# directory specified.
+DATE=`date +%Y%m%d%H%M%S`
+BASEDIR="/home/benchmarks/res_lat_$DATE"
+
+# the collection of I/O schedulers to test in this run. Multiple schedulers
+# must be separated with a space. There are shortcuts for the most common queue 
+# depths used in the K2 paper, namely k2_8, k2_16 and k2_32 for setting the K2  
+# I/O scheduler with a queue depth of 8, 16 or 32 respectively. 
+# SCHEDS="bfq mq-deadline kyber none k2"
+SCHEDS="bfq"
+
+# the operation modes for which the throughput should be tested. See the line
+# below for a collection of possible workload profiles. For more variety, refer
+# to the documentation of fio.
+# MODES="read randread randwrite write randrw"
+MODES="randread"
+
+# we can restrict block sizes to 4K and 64K, since other settings are
+# not yielding different results (apart from absolute latencies)
+# also, huge block sizes (e.g. 1M) do not yield many I/O events which may impede
+# statistical evaluation because there are too few samples
+BS="64K"
+
+# use different rates (in MiB/s) for different workload types since some should 
+# be significantly faster according to Samsung's specification. Rates should go 
+# up to a third of the approximate performance limit (entire benchmark is split
+# into three workers). Since this benchmark only tests for the maximum 
+# throughput, only one rate that exceeds the device capabilities is given. If 
+# you wish to test with multiple rates, they have to be separated with a space.
+#
+# Approximate bandwidth limits for the 970evo (with 64K block size)
+# seq. read: 2100 MB/s
+# rnd. read: 800 MB/s
+# seq. write: 1200 MB/s
+# rnd. write: 900 MB/s
+#
+# These rates are suitable for a completely or half filled Samsung 970evo.
+#
+# READ_RATES="10 45 90 135 180 225 270 315 360 405 450 495 540 585 630 675 720 
+#             765 810 855 900"
+# WRITE_RATES="10 20 30 45 60 75 90 105 120 135 150 165 180 195 210 225 240 255
+#              270 285 300"
+# RREAD_RATES="10 20 30 45 60 75 90 105 120 135 150 165 180 195 210 225 240 255   
+#              270 285 300" 
+# RWRITE_RATES="10 20 30 45 60 75 90 105 120 135 150 165 180 195 210 225 240 255   
+#               270 285 300"
+#
+# These rates were used for a trimmed Samsung 970evo.
+#
+READ_RATES="10 50 100 150 200 250 300 350 400 450 500 550 600 650 700 750 800
+            850 900 950 1000 1050 1100 1150 1200"
+WRITE_RATES="10 30 60 90 120 150 180 210 240 270 300 330 360 390 420 450 480
+              510 540 570 600"
+RREAD_RATES="10 20 30 45 60 75 90 105 120 135 150 165 180 195 210 225 240 255   
+             270 285 300" 
+RWRITE_RATES="10 30 60 90 120 150 180 210 240 270 300 330 360 390 420 450 480
+              510 540 570 600"
+
+################################################################################
+#                         START OF ACTUAL SCRIPT                               #
+################################################################################
+
+# handler for aborting the program. In order to leave the system in a sane 
+# state, the tracing sessions have to be closed.
+function abort {
+    lttng stop
+    lttng destroy
+
+    exit 1
+}
+
+# the first argument is mandatory, abort if it is not given.
+if [ $# -lt 2 ]
+  then
+  echo "Provide at least initial drive state and read share for mixed workload!"
+  exit 1
+fi
+
+# try to load the K2 module. If it is not present, leave a warning but proceed,
+# since this test is not necessarily encompassing K2.
+modprobe k2
+lsmod | grep "k2" > /dev/null
+if [ $? -ne 0 ]
+  then
+  echo "WARNING: could not load K2 kernel module (not an issue if not used)"
+fi
+
+# device size in bytes
+DEVSIZE=`lsblk -b -o NAME,SIZE | grep $DEVNAME`
+if [ $? -ne 0 ]
+  then
+  echo "$DEVNAME does not appear to be a valid block device..."
+  exit 1
+else
+  DEVSIZE=`echo $DEVSIZE | cut -d' ' -f2`
+fi
+# further variables to be used for device initialization
+(( DEVSIZE_HALF = $DEVSIZE / 2))
+(( DDCOUNT = $DEVSIZE_HALF / 1048576))   # dd should run with a block size of 1M
+
+# invoke exit handler when aborting the program
+trap abort SIGINT
+
+# create root directory of result file tree
+mkdir $BASEDIR
+
+# final rates for testing, assigned depending on workload type
+RATES=""
+
+# prepare "free" state of disk
+# in this first stage, only set the used blocks (minimize write impact of 
+# the benchmark)
+case "$1" in
+  "-f")
+    dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k;;
+  "-h")
+    # write first half of disk, erase the second one
+    # erasure of the second half is done directly before each benchmark
+    dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k count=${DDCOUNT};;
+esac
+sync
+
+# share of read requests in a mixed workload, given as an integer percent value
+# on the command line
+READSHARE="$2"
+
+# for each mq I/O scheduler
+for SCHED in $SCHEDS
+  do
+  # set the current IO scheduler
+  echo $SCHED > /sys/block/${DEVNAME}/queue/scheduler
+  mkdir $BASEDIR/${SCHED}
+  
+  # do some tuning depending on the scheduler
+  case "$SCHED" in
+    kyber )
+      echo 2000 > /sys/block/${DEVNAME}/queue/iosched/read_lat_nsec
+      echo 10000 > /sys/block/${DEVNAME}/queue/iosched/write_lat_nsec;;
+    bfq )
+      echo 0 > /sys/block/${DEVNAME}/queue/iosched/slice_idle
+      # no strict guarantees, would destroy the effect of libaio
+      echo 2 > /sys/block/${DEVNAME}/queue/iosched/fifo_expire_async
+      echo 1 > /sys/block/${DEVNAME}/queue/iosched/fifo_expire_sync;;
+      #
+      # start of modified configuration for BFQ (strict guarantees, only one
+      # request in flight). if you want to use this, comment out the three lines
+      # for BFQ setup above.
+      #
+      # max budget settings will be overridden later on because it depends on
+      # block size!!!
+      # echo 1 > /sys/block/${DEVNAME}/queue/iosched/max_budget
+      # echo 20 > /sys/block/${DEVNAME}/queue/iosched/fifo_expire_async
+      # echo 1 > /sys/block/${DEVNAME}/queue/iosched/fifo_expire_sync
+      # echo 0 > /sys/block/${DEVNAME}/queue/iosched/low_latency
+      # echo 1 > /sys/block/${DEVNAME}/queue/iosched/strict_guarantees
+      # echo 0 > /sys/block/${DEVNAME}/queue/iosched/slice_idle_us;;
+    # additional settings for deadline are not improving latency / throughput
+    # mq-deadline )
+      # disable low deadlines for testing
+      # echo 2 > /sys/block/${DEVNAME}/queue/iosched/write_expire
+      # echo 1 > /sys/block/${DEVNAME}/queue/iosched/read_expire
+      # echo 1 > /sys/block/${DEVNAME}/queue/iosched/fifo_batch;;
+    k2 )
+      if [ ! -z $2 ]
+        then
+        echo $2 > /sys/block/${DEVNAME}/queue/iosched/max_inflight
+      fi;;
+    k2_8 )                                                                      
+      echo "k2" > /sys/block/${DEVNAME}/queue/scheduler                         
+      echo "8"  > /sys/block/${DEVNAME}/queue/iosched/max_inflight;;            
+    k2_16 )                                                                     
+      echo "k2" > /sys/block/${DEVNAME}/queue/scheduler                         
+      echo "16" > /sys/block/${DEVNAME}/queue/iosched/max_inflight;;            
+    k2_32 )   
+      echo "k2" > /sys/block/${DEVNAME}/queue/scheduler                         
+      echo "32" > /sys/block/${DEVNAME}/queue/iosched/max_inflight;;
+  esac
+  
+  # loop over all modes
+  for CM in $MODES
+    do
+    # adapt rate list depending on current operating mode
+    # (mixed workloads are operated with the lower write limit)
+    case "$CM" in
+      read )
+        RATES="$READ_RATES";;
+      write )
+        RATES="$WRITE_RATES";;
+      randread )
+        RATES="$RREAD_RATES";;
+      randwrite )
+        RATES="$RWRITE_RATES";;
+      rw )
+        RATES="$RREAD_RATES";;
+      randrw )
+        RATES="$RWRITE_RATES";;
+    esac
+
+    # loop over all block sizes
+    for CBS in $BS
+      do
+      PLIST=""                           # list with all children pids
+
+      # create a leaf in the result file tree
+      WDIR=$BASEDIR/${SCHED}/${CM}_bs${CBS}
+      mkdir -p $WDIR
+
+      # this was some experimental code to check whether setting the maximum
+      # budget of BFQ to other values than one influences I/O latency in the 
+      # same way as K2 does. However, this is not the case.
+      # set max_budget according to block size when using BFQ
+      # if [ "$SCHED" == "bfq" ]
+      #  then
+      #  BSRAW=`echo $CBS | tr -d 'K'`
+      #  # the 970evo reports a sector size (see fdisk) of 512 Byte, so multiply
+      #  # the block size in KiB with 2 to obtain the number of sectors that a
+      #  # request will affect
+      #  ((BSRAW = BSRAW * 2000000))
+      #  echo "raw block size (sectors of 512 Byte): $BSRAW"
+      #  echo $BSRAW > /sys/block/${DEVNAME}/queue/iosched/max_budget
+      # fi
+
+      # prepare output csv file
+      RESFILE=$WDIR/data.csv
+      echo > $RESFILE
+      XLABFILE="${WDIR}/bm${CM}${CBS}_xlab.csv"
+      echo "targetbw,realbw" > $XLABFILE
+
+      # loop over all rates
+      for CR in $RATES
+        do
+        # announce new test case
+        echo
+        echo "###" 
+        echo "SCHED $SCHED - MODE $CM - BS $CBS - RATE ${CR}M"
+        echo "###"
+        echo
+
+        # prepare "free" state of disk
+        # reset free state of disk for every measurement (to account for the
+        # possibility of misguided write operations in previous tests) !!!
+        case "$1" in
+          "-h")
+            # write first half of disk (done before), erase the second one
+            blkdiscard -o $DEVSIZE_HALF /dev/${DEVNAME};;
+          "-t")
+            blkdiscard /dev/${DEVNAME};;
+        esac
+        sync
+
+        # output directory
+        OUTDIR=$WDIR/seq$CR
+        mkdir $OUTDIR
+
+        BENCHFILE="bm${CM}${CBS}${CR}.fio"
+        OUTFILE="bm${CM}${CBS}${CR}.out"
+        TRACEFILE="bm${CM}${CBS}${CR}.trace"
+
+        # prepare template for current run by substituting placeholders
+        TEMPLATE=`cat lat_bench.fio | awk -v n="$CR" -v b="$CBS" -v m="$CM" \
+                 -v d="/dev/${DEVNAME}" -v p="$READSHARE" '
+                 { gsub("%R", n "M"); gsub("%M", m); gsub("%B", b); gsub("%D", d);
+                   gsub("%P", p); print $0; }
+        '`
+                                                              
+        echo "$TEMPLATE" > $WDIR/$BENCHFILE
+  
+        # prepare tracer. create multiple channels to avoid losing events
+        # use our customized trace points.
+        lttng create iosched --output=$OUTDIR
+        lttng enable-channel --kernel --num-subbuf=1 --subbuf-size=128M ch_queue
+        lttng enable-channel --kernel --num-subbuf=1 --subbuf-size=128M ch_compl
+        lttng enable-channel --kernel --num-subbuf=1 --subbuf-size=128M ch_issue
+        lttng enable-event --kernel --channel=ch_queue block_bio_queue2
+        lttng enable-event --kernel --channel=ch_compl block_bio_complete2
+        lttng enable-event --kernel --channel=ch_issue block_rq_issue2
+
+        fio $WDIR/$BENCHFILE > $WDIR/$OUTFILE &
+        FIO_PARENT=$!
+
+        # find out worker children (actually these have to be traced!)
+        FIO_CHILDREN=""
+
+        # somehow, there is a delay before fio spawns it worker child...
+        while [ `ps -ef | grep fio | wc -l` -le 2 ]
+          do
+          echo "waiting for child to spawn"
+        done
+
+        FIO_CHILDREN=`ps -ef | grep fio | awk -v ppid="$FIO_PARENT" '
+            BEGIN { pid_list = ""; }
+
+            $3 == ppid { if (pid_list != "") {
+                             pid_list = pid_list ",";
+                         } 
+                         pid_list = pid_list $2;
+                       }
+
+            END { print(pid_list); }
+        '`
+
+        lttng start
+
+        echo "fio parent PID: $FIO_PARENT"
+        echo "fio children pids: $FIO_CHILDREN"
+
+        # separate pids of background and realtime process (needed for evaluation)
+        # by convention and layout of the fio file, the last process spawned is
+        # the real-time process. KEEP IN MIND TO CHANGE THE cut FIELD IF YOU 
+        # ALTER THE NUMBER OF BENCHMARK PROCESSES!!!
+        BGPID=`echo $FIO_CHILDREN | cut -d, -f1`
+        RTPID=`echo $FIO_CHILDREN | cut -d, -f4` 
+
+        # add entry to PID list
+        if [ -z "$PLIST" ]
+          then
+          PLIST="$RTPID"
+        else
+          PLIST="${PLIST},${RTPID}"
+        fi
+
+        # wait for the benchmark to complete
+        wait $FIO_PARENT
+
+        # add an entry to the x label file
+        OUT=`cat $WDIR/$OUTFILE`
+        BGBW=`echo "$OUT" | awk '
+            BEGIN { res = 0; }
+
+            $1 == "WRITE:" || $1 == "READ:" {
+                sub("MiB/s", "", $2);
+                res = res + substr($2, 4);
+            }
+
+            END { print(res); }
+        '`
+
+        TGTBW=$CR
+        ((TGTBW = TGTBW * 3))
+
+        echo "$TGTBW/$BGBW" >> $XLABFILE
+
+        # clean up tracer
+        lttng stop
+        lttng destroy
+      done
+      sleep 60
+
+      echo 
+      echo "### evaluation of benchmarks ###"
+      echo 
+
+      # do the evaluation
+      RATE_LIST=`echo "$RATES" | tr -d '\n'`
+      RATE_LIST=`echo "$RATE_LIST" | tr -s ' ' ','`
+    
+      echo "rate list: $RATE_LIST"
+      echo "rt pid list: $PLIST"
+
+      echo 
+      echo "Transforming CTF trace files to csv..."
+      # transform raw trace files into latency values stored as a CSV table
+      # conversion for overall request latency (bio_queue until bio_complete)
+      python3 t2csv.py "$WDIR" "$RATE_LIST" "$PLIST"
+      # conversion for latency in the block layer including the I/O scheduler
+      # (bio_queue until rq_issue)
+      python3 t2csv_st.py "$WDIR" "$RATE_LIST" "$PLIST"
+      if [ $? -eq 0 ]                             
+        then                                                                      
+        echo "Conversion finished successfully."                                       
+      else                                                                        
+        echo "Failed to convert traces to csv."                                  
+        exit 2                                                                    
+      fi
+    done
+  done
+
+  # remove trace directories to avoid low disk space
+  for i in `find ${BASEDIR}/${SCHED} -name "seq*" -type d`
+    do
+    rm -rf $i
+  done
+done
+
+exit 0

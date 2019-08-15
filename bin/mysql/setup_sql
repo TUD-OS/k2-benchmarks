@@ -1,0 +1,31 @@
+#! /usr/bin/ksh
+
+#
+# Setup script for database-related benchmarks
+# 
+# Copyright (c) 2019 Till Miemietz
+#
+
+# first shut down and disable app armor
+echo "Disabling app armor..."
+systemctl stop apparmor.service
+systemctl disable apparmor.service
+echo "Done..."
+
+# reset sql data directory (will shut down running MySQL instances)
+echo "Setting SQL data directory..."
+systemctl stop mysqld.service
+CONFIG=`cat /etc/mysql/mysql.conf.d/mysqld.cnf | awk '
+        { gsub("/var/lib/mysql", "/mnt/sql"); }
+    '`
+echo "$CONFIG" > /etc/mysql/mysql.conf.d/mysqld.cnf
+echo "Done..."
+
+# set io priority of SQL daemon 
+# in default config, no ioprio is set for the mysql service, so we can simply
+# append some lines to the systemd config file. if there is an error while
+# starting the mysql service, add the lines below manually to the daemon config
+echo "Setting systemd I/O priority..."
+echo "IOSchedulingClass=1" >> /lib/systemd/system/mysql.service
+echo "IOSchedulingPrio=0" >> /lib/systemd/system/mysql.service
+echo "Done..."

@@ -1,0 +1,61 @@
+# Benchmark file for the maximum throughput tests of diffrent I/O schedulers.
+#
+# Copyright (c) 2019 Till Miemietz
+
+[global]
+    filename=%D                  # file operated upon
+    rw=%M
+    bs=%B
+    runtime=10                   # time limit for benchmark in seconds
+    time_based=1                 # loop over workload if finished before runtime
+
+[bgload1]
+    name=bgload1
+    numjobs=1                    # no. of instances to spawn for this workload
+    ioengine=libaio              # simulate background threads with aio for
+                                 # maximum stressing of the SSD
+    iodepth=32
+    direct=1                     # direct I/O to compute realistic values
+    size=12%
+    rate=%R,%R,%R                # throughput cap for this workload
+    cpumask=1                    # run on CPU no. 3
+    cpus_allowed_policy=shared   # allow CPU sharing (needed to run on one c.)
+
+[bgload2]
+    name=bgload2
+    numjobs=1                    # no. of instances to spawn for this workload
+    ioengine=libaio              # simulate background threads with aio for
+                                 # maximum stressing of the SSD
+    iodepth=32
+    direct=1                     # direct I/O to compute realistic values
+    offset=12%
+    size=12%
+    rate=%R,%R,%R                # throughput cap for this workload
+    cpumask=2                    # run on CPU no. 3
+    cpus_allowed_policy=shared   # allow CPU sharing (needed to run on one c.)
+
+[bgload3]
+    name=bgload3
+    numjobs=1                    # no. of instances to spawn for this workload
+    offset=24%
+    size=12%
+    ioengine=libaio              # simulate background threads with aio for
+                                 # maximum stressing of the SSD
+    iodepth=32
+    direct=1                     # direct I/O to compute realistic values
+    rate=%R,%R,%R                # throughput cap for this workload
+    cpumask=4                    # run on CPU no. 3
+    cpus_allowed_policy=shared   # allow CPU sharing (needed to run on one c.)
+
+[bgload4]
+    name=bgload4
+    numjobs=1                    # no. of instances to spawn for this workload
+    offset=36%
+    size=12%
+    ioengine=libaio              # simulate background threads with aio for
+                                 # maximum stressing of the SSD
+    iodepth=32
+    direct=1                     # direct I/O to compute realistic values
+    rate=%R,%R,%R                # throughput cap for this workload
+    cpumask=8                    # run on CPU no. 3
+    cpus_allowed_policy=shared   # allow CPU sharing (needed to run on one c.)

@@ -1,0 +1,35 @@
+This directory contains a collection of scripts and benchmark files to 
+reproduce performance values given by manufacturers of SSDs. In this case,
+throughput and/or IOPS are the relevant metric. The programs are tailored for 
+the Samsung 970evo, but should also work for other drives. However, when using 
+different hardware, some parameters of the benchmark such as the block size may 
+have to be altered in order to obtain the best results. 
+Adapting the benchmarks is done by changing the respective lines in the shell 
+script and/or the fio file. For fio benchmarks that are enveloped in a shell 
+script, the script is the only location where a modified target device has to 
+be specified.
+
+Except seqwrite which outputs statistics of dd, all benchmarks will print the
+summary of fio to the console. In any case, retrieving the relevant performance 
+values is then straightforward. Often, the last few summary lines already 
+contain all the information needed. To calculate the IOPS form the overall IOP 
+counter, the runtime of the fio tests may be of interest. For all time-based 
+benchmarks (read is not!), the default run time is 10 seconds.
+
+File list
+---------
+
+read              - Benchmark script for sequential reads. Use "./read" to
+                    execute. Takes no arguments.
+read.fio          - fio file used by read (not to be executed separately)
+randread          - Benchmark script for random reads. Use "./randread" to
+                    execute. Takes no arguments.
+randread.fio      - fio file used by randread (not to be executed separately)
+seqwrite          - Benchmark script for sequential writes. Use "./seqwrite" to        
+                    execute. Takes no arguments.
+randwrite.fio     - fio file for random writes. Use "fio randwrite.fio" to
+                    execute.
+randwrite_qd1.fio - fio file for single-threaded random writes using a queue
+                    depth of one. Use "fio randwrite_qd1.fio" to execute.
+randread_qd1.fio  - fio file for single-threaded random reads using a queue      
+                    depth of one. Use "fio randread_qd1.fio" to execute. 

@@ -1,0 +1,50 @@
+     Scripts for Testing the Real-Time Behavior of I/O Schedulers on SSDs
+                 Copyright (c) 2018, 2019 Till Miemietz
+
+The scripts contained in this repository can be used to test the behavior of 
+different I/O schedulers of the Linux multi-queue block layer in a real-time
+scenario. This document only contains general information about the setup and
+the requirements to run all tests. The README files in the subdirectories of the
+binary folder will give further information on how to use particular scripts.
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@                                 WARNING                                      @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+Almost all benchmarks will write to the raw device under test. EXECUTING THEM
+ON DEVICES OR PARTITIONS WITH MEANINGFUL DATA WILL RESULT IN A TOTAL LOSS OF
+THESE FILES!!! Before running the benchmarks, check if the device under test is
+actually the one that you want to run the benchmark on. You are able to 
+specify the device under test in a central spot at the beginning of all scripts.
+
+Prerequisites
+-------------
+
+!!! 4 cores !!! otherwise deep changes in the cpu configurations have to be 
+carried out !!!
+
+mysql
+python
+fio 3.10
+internet access for loading additional repositories
+ksh
+awk
+sysbench
+
+all scripts require root privileges to execute
+
+Script Packages
+---------------
+
+There are several categories of benchmark scripts. Detailed information can be
+found in the respective directory. Roughly, the subdirectories contain 
+scripts to test the following:
+
+micro      - microbenchmarks for testing I/O latencies with different I/O 
+             schedulers
+mysql      - macrobenchmarks for comparing latencies of I/O schedulers in a
+             MySQL setup using sysbench
+throughput - scripts for evaluating the tradeoff between queue depth and 
+             maximum throughput for the K2 I/O scheduler
+vendor     - benchmarks for reproducing the I/O characteristics of drives as
+             advertised by their vendors (IOPS/throughput)

@@ -1,0 +1,209 @@
+#! /usr/bin/ksh
+
+#
+# this test evaluates the correlation of allowed inflight queue depth and 
+# throughput with the K2 I/O scheduler. Different workload modes and block
+# sizes can be tested.
+#
+# Copyright (c) 2019 Till Miemietz
+#
+
+# the device name under test. FOr instance "nvme0n1" refers to the device
+# found in /dev/nvme0n1
+DEVNAME="nvme0n1"
+
+# root directory for all benchmark results. Change this to dump result files
+# at another location. Make sure that you have write permissions for the 
+# directory specified.
+DATE=`date +%Y%m%d%H%M%S`
+BASEDIR="/home/benchmarks/k2_qd_res_$DATE"
+
+# the operation modes for which the throughput should be tested. See the line
+# below for a collection of possible workload profiles. For more variety, refer
+# to the documentation of fio.
+# MODES="read randread randwrite write randrw"
+MODES="randread"
+
+# we can restrict block sizes to 4K and 64K, since other settings are
+# not yielding different results (apart from absolute latencies)
+BS="4K"
+
+# minimum inflight queue depth to test
+QD_MIN=1
+
+# maximum inflight queue depth to test
+QD_MAX=128
+
+# use different rates (in MiB/s) for different workload types since some should 
+# be significantly faster according to Samsung's specification. Rates should go 
+# up to a third of the approximate performance limit (entire benchmark is split
+# into three workers). Since this benchmark only tests for the maximum 
+# throughput, only one rate that exceeds the device capabilities is given. If 
+# you wish to test with multiple rates, they have to be separated with a space.
+#
+# Approximate bandwidth limits for the 970evo (with 64K block size)
+# seq. read: 2100 MB/s
+# rnd. read: 800 MB/s
+# seq. write: 1200 MB/s
+# rnd. write: 900 MB/s
+READ_RATES="900"
+WRITE_RATES="600"
+RREAD_RATES="600" 
+RWRITE_RATES="600"
+
+################################################################################
+#                         START OF ACTUAL SCRIPT                               #
+################################################################################
+
+# final rates for testing, assigned depending on workload type
+RATES=""
+
+# find out if the block device specified actually exists
+DEVSIZE=`lsblk -b -o NAME,SIZE | grep $DEVNAME`
+if [ $? -ne 0 ]
+  then
+  echo "$DEVNAME does not appear to be a valid block device..."
+  exit 1
+else
+  # device capacity in bytes
+  DEVSIZE=`echo $DEVSIZE | cut -d' ' -f2`
+fi
+
+# try to load the K2 module. If it is not present, the whole benchmark becomes
+# pointless so we will exit with an error message
+modprobe k2
+lsmod | grep "k2" > /dev/null
+if [ $? -ne 0 ]
+  then
+  echo "FATAL: could not load K2 kernel module."
+  exit 2
+fi
+# set K2 as I/O scheduler for $DEVNAME
+echo k2 > /sys/block/${DEVNAME}/queue/scheduler
+
+# initialize the first half of the disk with all zeroes, the second half is
+# trimmed to simulate a sane state of the SSD
+# use dd with larger block sizes to save time
+(( DEVSIZE_HALF = $DEVSIZE / 2))
+(( DDCOUNT = $DEVSIZE_HALF / 1048576))
+echo "Initializing drive /dev/${DEVNAME}..."
+blkdiscard -o $DEVSIZE_HALF /dev/${DEVNAME}                                                 
+dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k count=$DDCOUNT status=progress
+
+# create the root directory for all files created by this benchmark run
+mkdir $BASEDIR
+
+# loop over all modes
+for CM in $MODES
+  do
+
+  # create the directory for storing the benchmark results
+  mkdir ${BASEDIR}/${CM}
+
+  # adapt rate list depending on current operating mode
+  # (mixed workloads are operated with the lower write limit)
+  case "$CM" in
+    read )
+      RATES="$READ_RATES";;
+    write )
+      RATES="$WRITE_RATES";;
+    randread )
+      RATES="$RREAD_RATES";;
+    randwrite )
+      RATES="$RWRITE_RATES";;
+    rw )
+      RATES="$RREAD_RATES";;
+    randrw )
+      RATES="$RWRITE_RATES";;
+  esac
+
+  # loop over all block sizes
+  for CBS in $BS
+    do
+    PLIST=""                           # list with all children pids
+
+    WDIR=$BASEDIR/${CM}/bs${CBS}
+    mkdir -p $WDIR
+
+    # here, there is only one rate!
+    BENCHFILE="bm${CM}${CBS}.fio"    # actual fio benchmark file
+    OUTFILE="bm${CM}${CBS}.out"      # results as printed by fio
+    RESFILE="throughputs.csv"        # the actual table of qd vs. throughput
+
+    # prepare template for current run by substituting placeholders
+    TEMPLATE=`cat tpbench.fio | awk -v n="$CR" -v b="$CBS" -v m="$CM" \
+        -v d="/dev/${DEVNAME}" '
+        { gsub("%R", n "M"); gsub("%M", m); gsub("%B", b); gsub("%D", d);
+          print $0; }
+    '`
+    echo "$TEMPLATE" > $WDIR/$BENCHFILE
+    echo "qd,throughput" > $WDIR/$RESFILE    # header line for csv file
+
+    # loop over all infight queue depths
+    QD=$QD_MIN
+
+    while [ $QD -le $QD_MAX ]
+      do
+      echo $QD > /sys/block/${DEVNAME}/queue/iosched/max_inflight
+      # announce new test case
+      echo
+      echo "###" 
+      echo "SCHED K2 - MODE $CM - BS $CBS - QD $QD"
+      echo "###"
+      echo
+      
+      fio $WDIR/$BENCHFILE > $WDIR/$OUTFILE &
+      FIO_PARENT=$!
+
+      # find out worker children (not strictly necessary for this benchmark, 
+      # but sometimes handy for surveillance of the system state)
+      FIO_CHILDREN=""
+
+      # somehow, there is a delay before fio spawns it worker child...
+      while [ `ps -ef | grep fio | wc -l` -le 2 ]
+        do
+        echo "waiting for child to spawn"
+      done
+      FIO_CHILDREN=`ps -ef | grep fio | awk -v ppid="$FIO_PARENT" '
+          BEGIN { pid_list = ""; }
+
+          $3 == ppid { if (pid_list != "") {
+                           pid_list = pid_list ",";
+                       } 
+                       pid_list = pid_list $2;
+                     }
+
+          END { print(pid_list); }
+      '`
+
+      echo "fio parent PID: $FIO_PARENT"
+      echo "fio children pids: $FIO_CHILDREN"
+
+      # wait for the benchmark to complete
+      wait $FIO_PARENT
+      echo "fio process $FIO_PARENT has finished."
+
+      # add an value pair of queue depth and achieved throughput to the csv file
+      # for mixed workloads, the total throughput for reads and writes will be
+      # added up. only the summary statistics from the bottom of the fio input
+      # are taken into account.
+      OUT=`cat $WDIR/$OUTFILE`
+      BGBW=`echo "$OUT" | awk '
+          BEGIN { res = 0; }
+
+          $1 == "WRITE:" || $1 == "READ:" {
+              sub("MiB/s", "", $2);
+              res = res + substr($2, 4);
+          }
+
+          END { print(res); }
+      '`
+      echo "$QD,$BGBW" >> $WDIR/$RESFILE
+      rm $WDIR/$OUTFILE
+
+      (( QD = QD + 1 ))
+    done
+  done
+done
+
+exit 0
