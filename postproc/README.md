@@ -10,7 +10,7 @@ intermediary data, and LaTeX files.
 
 The ```postproc```-directory contains itself two directories:
 
-```scripts```, which contains all the scripts described in this README, and
+```scripts```, which contains all the scripts described in this README, and  
 ```tex``` which contains the necessary TeX-files to generate tables and figures.
 
 However, using those scripts is not strictly necessary, since we report simple
@@ -26,19 +26,19 @@ following latency quantiles: min, median, 95th, 99th, 99.9th and maximum.
 The script also generates intermediary data files for the maximum throughput
 and maximum latency tables. Output files are:
 
-```generated/data/mb```
+```generated/data/mb```  
 ```generated/data/ml```
 
 ## Step 2 - Generating TeX files
 
 The script ```table_data_to_tex.rb``` consumes the following files:
 
-```generated/data/mb```
+```generated/data/mb```  
 ```generated/data/ml```
 
 and generates the LaTeX files
 
-```generated/tex/maxbw.tex```
+```generated/tex/maxbw.tex```  
 ```generated/tex/maxlat.tex```
 
 which can be used to re-create the tables containing maximum thoughput and
