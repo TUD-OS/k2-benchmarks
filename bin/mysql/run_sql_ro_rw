@@ -22,7 +22,7 @@ DEVNAME="nvme0n1"
 # at another location. Make sure that you have write permissions for the 
 # directory specified.
 DATE=`date +%Y%m%d%H%M%S`
-BASEDIR="/home/benchmarks/mysql_res_ro_rw_$DATE"
+BASEDIR="/home/rtss19/k2-results/mysql_res_ro_rw_$DATE"
 
 # the collection of I/O schedulers to test in this run. Multiple schedulers
 # must be separated with a space. The comment line below shows
@@ -33,12 +33,19 @@ SCHEDS="bfq"
 #                         START OF ACTUAL SCRIPT                               #
 ################################################################################
 
+# if the script is not executed by root, abort it
+if [ `id -u` -ne 0 ]
+  then
+  echo "This script has to be executed with root privileges!"
+  exit 1
+fi
+
 # first clear mountpoint
 mountpoint -q /mnt
 if [ $? -eq 0 ]
   then
   echo "Umount volume at /mnt before proceeding"
-  exit 1
+  exit 2
 fi
 
 # try to load the K2 module. If it is not present, exit with an error message
@@ -47,7 +54,7 @@ lsmod | grep "k2" > /dev/null
 if [ $? -ne 0 ]
   then
   echo "FATAL: could not load K2 kernel module."
-  exit 2
+  exit 3
 fi
 
 # create the result directory
@@ -200,6 +207,6 @@ for SCHED in $SCHEDS
   systemctl stop mysql.service
   sync
   echo "sql database stopped..."
-  wait 5	# shutting down everything may take a few seconds
+  sleep 5           # shutting down everything may take a few seconds
   umount /mnt
 done

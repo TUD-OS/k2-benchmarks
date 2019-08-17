@@ -14,7 +14,7 @@ DEVNAME="nvme0n1"
 # at another location. Make sure that you have write permissions for the 
 # directory specified.
 DATE=`date +%Y%m%d%H%M%S`
-BASEDIR="/home/benchmarks/tp_res_$DATE"
+BASEDIR="/home/rtss19/k2-results/tp_res_$DATE"
 
 # the collection of I/O schedulers to test in this run. Multiple schedulers
 # must be separated with a space. The comment line below shows
@@ -55,12 +55,19 @@ RWRITE_RATES="600"
 # final rates for testing, assigned depending on workload type
 RATES=""
 
+# if the script is not executed by root, abort it
+if [ `id -u` -ne 0 ]
+  then
+  echo "This script has to be executed with root privileges!"
+  exit 1
+fi
+
 # device size in bytes
 DEVSIZE=`lsblk -b -o NAME,SIZE | grep $DEVNAME`
 if [ $? -ne 0 ]
   then
   echo "$DEVNAME does not appear to be a valid block device..."
-  exit 1
+  exit 2
 else
   DEVSIZE=`echo $DEVSIZE | cut -d' ' -f2`
 fi

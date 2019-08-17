@@ -16,7 +16,7 @@ DEVNAME="nvme0n1"
 # at another location. Make sure that you have write permissions for the 
 # directory specified.
 DATE=`date +%Y%m%d%H%M%S`
-BASEDIR="/home/benchmarks/k2_qd_res_$DATE"
+BASEDIR="/home/rtss19/k2-results/k2_qd_res_$DATE"
 
 # the operation modes for which the throughput should be tested. See the line
 # below for a collection of possible workload profiles. For more variety, refer
@@ -58,12 +58,19 @@ RWRITE_RATES="600"
 # final rates for testing, assigned depending on workload type
 RATES=""
 
+# if the script is not executed by root, abort it
+if [ `id -u` -ne 0 ]
+  then
+  echo "This script has to be executed with root privileges!"
+  exit 1
+fi
+
 # find out if the block device specified actually exists
 DEVSIZE=`lsblk -b -o NAME,SIZE | grep $DEVNAME`
 if [ $? -ne 0 ]
   then
   echo "$DEVNAME does not appear to be a valid block device..."
-  exit 1
+  exit 2
 else
   # device capacity in bytes
   DEVSIZE=`echo $DEVSIZE | cut -d' ' -f2`
@@ -76,7 +83,7 @@ lsmod | grep "k2" > /dev/null
 if [ $? -ne 0 ]
   then
   echo "FATAL: could not load K2 kernel module."
-  exit 2
+  exit 3
 fi
 # set K2 as I/O scheduler for $DEVNAME
 echo k2 > /sys/block/${DEVNAME}/queue/scheduler

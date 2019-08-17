@@ -26,7 +26,7 @@ DEVNAME="nvme0n1"
 # at another location. Make sure that you have write permissions for the 
 # directory specified.
 DATE=`date +%Y%m%d%H%M%S`
-BASEDIR="/home/benchmarks/res_lat_multrt_$DATE"
+BASEDIR="/home/rtss19/k2-results/res_lat_multrt_$DATE"
 
 # the collection of I/O schedulers to test in this run. Multiple schedulers
 # must be separated with a space. There are shortcuts for the most common queue
@@ -101,6 +101,13 @@ if [ $# -lt 1 ]
   exit 1
 fi
 
+# if the script is not executed by root, abort it
+if [ `id -u` -ne 0 ]
+  then
+  echo "This script has to be executed with root privileges!"
+  exit 2
+fi
+
 # try to load the K2 module. If it is not present, leave a warning but proceed,
 # since this test is not necessarily encompassing K2.
 modprobe k2
@@ -115,7 +122,7 @@ DEVSIZE=`lsblk -b -o NAME,SIZE | grep $DEVNAME`
 if [ $? -ne 0 ]
   then
   echo "$DEVNAME does not appear to be a valid block device..."
-  exit 1
+  exit 3
 else
   DEVSIZE=`echo $DEVSIZE | cut -d' ' -f2`
 fi
@@ -137,11 +144,11 @@ RATES=""
 # the benchmark)
 case "$1" in
   "-f")
-    dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k;;
+    dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k status=progress;;
   "-h")
     # write first half of disk, erase the second one
     # erasure of the second half is done directly before each benchmark
-    dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k count=${DDCOUNT};;
+    dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k count=${DDCOUNT} status=progress;;
 esac
 sync
 
@@ -369,7 +376,6 @@ for SCHED in $SCHEDS
         lttng stop
         lttng destroy
       done
-      sleep 60
 
       echo 
       echo "### evaluation of benchmarks ###"
