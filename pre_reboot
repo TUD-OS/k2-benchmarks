@@ -19,7 +19,7 @@ read ROOTPW
 stty echo
 
 echo "Installing system packages..."
-echo "$ROOTPW" | sudo -kS apt-get -q -y install "$PKGLIST"
+echo "$ROOTPW" | sudo -kS apt-get -q -y install $PKGLIST
 
 echo "Installing additional R packages..."
 echo "$ROOTPW" | sudo -kS Rscript -e \
@@ -58,7 +58,7 @@ GRUBCONF=`cat /etc/default/grub | awk -v krn="$NKERNEL" -v men="$MENUID" '
       print($0); }
 '`
 
-echo "$ROOTPW" | sudo -kS bin/sh "echo $GRUBCONF > /etc/default/grub"
+echo "$ROOTPW" | sudo -kS GCONF="$GRUBCONF" /bin/sh -c 'echo "$GCONF" > /etc/default/grub'
 echo "$ROOTPW" | sudo -kS update-grub
 
 echo "Setting additional modules to load on startup..."
@@ -78,9 +78,9 @@ echo "Setting SQL data directory..."
 echo "$ROOTPW" | sudo -kS systemctl stop mysqld.service
 echo "$ROOTPW" | sudo -kS systemctl disable mysql.service
 CONFIG=`cat /etc/mysql/mysql.conf.d/mysqld.cnf | awk '
-        { gsub(\"/var/lib/mysql\", \"/mnt/sql\"); print($0); }
+        { gsub("/var/lib/mysql", "/mnt/sql"); print($0); }
     '`
-echo "$ROOTPW" | sudo -kS /bin/bash "echo $CONFIG > /etc/mysql/mysql.conf.d/mysqld.cnf"
+echo "$ROOTPW" | sudo -kS CNF="$CONFIG" /bin/sh -c 'echo "$CNF" > /etc/mysql/mysql.conf.d/mysqld.cnf'
 echo "Done..."
 
 # set io priority of SQL daemon 
@@ -88,8 +88,8 @@ echo "Done..."
 # append some lines to the systemd config file. if there is an error while
 # starting the mysql service, add the lines below manually to the daemon config
 echo "Setting systemd I/O priority..."
-echo "$ROOTPW" | sudo -kS /bin/sh "echo IOSchedulingClass=1 >> /lib/systemd/system/mysql.service"
-echo "$ROOTPW" | sudo -kS /bin/sh "echo IOSchedulingPrio=0 >> /lib/systemd/system/mysql.service"
+echo "$ROOTPW" | sudo -kS /bin/sh -c "echo IOSchedulingClass=1 >> /lib/systemd/system/mysql.service"
+echo "$ROOTPW" | sudo -kS /bin/sh -c "echo IOSchedulingPrio=0 >> /lib/systemd/system/mysql.service"
 echo "Done..."
 echo "Reloading daemon configuration..."
 echo "$ROOTPW" | sudo -kS systemctl daemon-reload
