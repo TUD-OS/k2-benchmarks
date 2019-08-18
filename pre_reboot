@@ -1,0 +1,102 @@
+#! /usr/bin/ksh
+
+#
+# Script which sets up the system automatically for running the K2 benchmarks
+#
+# Copyright (c) 2019 Till Miemietz
+#
+
+# list of apt packages that have to be installed to run
+# the complete toolchain
+PKGLIST="build-essential ncurses-dev libelf-dev libssl-dev autoconf pkg-config
+         libtool-bin bison flex libpopt-dev libxml2-dev uuid-dev liburcu-dev
+	 swig python3-dev asciidoc xmlto babeltrace python3-babeltrace fio
+	 mysql-server libaio-dev libmysqlclient-dev r-base"
+
+echo "Enter root's password:"
+stty -echo
+read ROOTPW
+stty echo
+
+echo "Installing system packages..."
+echo "$ROOTPW" | sudo -kS apt-get -q -y install "$PKGLIST"
+
+echo "Installing additional R packages..."
+echo "$ROOTPW" | sudo -kS Rscript -e \
+	"install.packages(c(\"reshape2\", \"data.table\", \"dplyr\"))"
+
+echo "Downloading source code repositories..."
+mkdir ~/k2-src        # directory for all source code repositories
+mkdir ~/k2-results    # directory for result files
+cd ~/k2-src
+
+# use depth 1 in order to avoid downloading the full
+# linux history. the modfified 4.15.0 kernel is the
+# default branch of this repository.
+git clone https://github.com/TUD-OS/k2-linux --depth 1 
+git clone https://github.com/TUD-OS/k2-scheduler
+git clone https://github.com/TUD-OS/k2-lttng-modules
+git clone https://github.com/lttng/lttng-tools
+git clone https://github.com/akopytov/sysbench
+
+echo "Building customized Linux kernel..."
+cd k2-linux/
+# choose the existing config of this distro
+cp -v /boot/config-$(uname -r) .config
+make -j 4
+echo "$ROOTPW" | sudo -kS make modules_install -j 4
+echo "$ROOTPW" | sudo -kS make install -j 4
+
+echo "Updating GRUB configuration..."
+MENUID=`cat /boot/grub/grub.cfg | grep "submenu" | cut -d' ' -f7 | tr -d "'"`
+NKERNEL=`cat /boot/grub/grub.cfg | grep "'Ubuntu, with Linux 4.15.0-k2+'" | cut -d' ' -f15 | tr -d "'"`
+# update default boot entry and force kernel to use the mq block layer
+GRUBCONF=`cat /etc/default/grub | awk -v krn="$NKERNEL" -v men="$MENUID" '
+    { gsub("GRUB_CMDLINE_LINUX=\"\"", "GRUB_CMDLINE_LINUX=\"scsi_mod.use_blk_mq=1\""); 
+      gsub("\"quiet splash\"", "\"\""); 
+      gsub("GRUB_DEFAULT=0", "GRUB_DEFAULT=\"" men ">" krn "\""); 
+      print($0); }
+'`
+
+echo "$ROOTPW" | sudo -kS bin/sh "echo $GRUBCONF > /etc/default/grub"
+echo "$ROOTPW" | sudo -kS update-grub
+
+echo "Setting additional modules to load on startup..."
+echo "$ROOTPW" | sudo -kS /bin/sh -c "echo bfq >> /etc/modules"
+echo "$ROOTPW" | sudo -kS /bin/sh -c "echo kyber-iosched >> /etc/modules"
+echo "$ROOTPW" | sudo -kS /bin/sh -c "echo mq-deadline >> /etc/modules"
+
+# setup MySQL service for benchmarks
+# first shut down and disable app armor
+echo "Disabling app armor..."
+echo "$ROOTPW" | sudo -kS systemctl stop apparmor.service
+echo "$ROOTPW" | sudo -kS systemctl disable apparmor.service
+echo "Done..."
+
+# reset sql data directory (will shut down running MySQL instances)
+echo "Setting SQL data directory..."
+echo "$ROOTPW" | sudo -kS systemctl stop mysqld.service
+echo "$ROOTPW" | sudo -kS systemctl disable mysql.service
+CONFIG=`cat /etc/mysql/mysql.conf.d/mysqld.cnf | awk '
+        { gsub(\"/var/lib/mysql\", \"/mnt/sql\"); print($0); }
+    '`
+echo "$ROOTPW" | sudo -kS /bin/bash "echo $CONFIG > /etc/mysql/mysql.conf.d/mysqld.cnf"
+echo "Done..."
+
+# set io priority of SQL daemon 
+# in default config, no ioprio is set for the mysql service, so we can simply
+# append some lines to the systemd config file. if there is an error while
+# starting the mysql service, add the lines below manually to the daemon config
+echo "Setting systemd I/O priority..."
+echo "$ROOTPW" | sudo -kS /bin/sh "echo IOSchedulingClass=1 >> /lib/systemd/system/mysql.service"
+echo "$ROOTPW" | sudo -kS /bin/sh "echo IOSchedulingPrio=0 >> /lib/systemd/system/mysql.service"
+echo "Done..."
+echo "Reloading daemon configuration..."
+echo "$ROOTPW" | sudo -kS systemctl daemon-reload
+echo "Done..."
+
+echo "#"
+echo "# Pre-reboot configuration done. Reboot the system to proceed."
+echo "#"
+
+exit 0

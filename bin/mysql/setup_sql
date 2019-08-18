@@ -1,10 +1,19 @@
 #! /usr/bin/ksh
 
+# temporary file, to be removed before shipping!!!
+
 #
 # Setup script for database-related benchmarks
 # 
 # Copyright (c) 2019 Till Miemietz
 #
+
+# if the script is not executed by root, abort it
+if [ `id -u` -ne 0 ]
+  then
+  echo "This script has to be executed with root privileges!"
+  exit 1
+fi
 
 # first shut down and disable app armor
 echo "Disabling app armor..."
@@ -15,8 +24,9 @@ echo "Done..."
 # reset sql data directory (will shut down running MySQL instances)
 echo "Setting SQL data directory..."
 systemctl stop mysqld.service
+systemctl disable mysql.service
 CONFIG=`cat /etc/mysql/mysql.conf.d/mysqld.cnf | awk '
-        { gsub("/var/lib/mysql", "/mnt/sql"); }
+        { gsub("/var/lib/mysql", "/mnt/sql"); print($0); }
     '`
 echo "$CONFIG" > /etc/mysql/mysql.conf.d/mysqld.cnf
 echo "Done..."
@@ -28,4 +38,7 @@ echo "Done..."
 echo "Setting systemd I/O priority..."
 echo "IOSchedulingClass=1" >> /lib/systemd/system/mysql.service
 echo "IOSchedulingPrio=0" >> /lib/systemd/system/mysql.service
+echo "Done..."
+echo "Reloading daemon configuration..."
+systemctl daemon-reload
 echo "Done..."

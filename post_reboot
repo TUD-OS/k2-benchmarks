@@ -1,0 +1,38 @@
+#! /usr/bin/ksh
+
+#
+# Script which sets up the system automatically for running the K2 benchmarks
+# (second part)
+# 
+# Copyright (c) 2019 Till Miemietz
+#
+
+echo "Enter root's password:"
+stty -echo
+read ROOTPW
+stty echo
+
+echo "Building K2 I/O scheduler..."
+cd ~/k2-src/k2-scheduler/
+make
+echo "$ROOTPW" | sudo -kS make install
+
+echo "Building LTTnG tracer..."
+cd ~/k2-src/k2-lttng-modules/
+make -j 4
+echo "$ROOTPW" | sudo -kS make modules_install -j 4
+echo "$ROOTPW" | sudo -kS depmod -a
+cd ~/k2-src/lttng-tools/
+./bootstrap
+./configure --enable-python-bindings --without-lttng-ust
+make -j 4
+echo "$ROOTPW" | sudo -kS make install -j 4
+echo "$ROOTPW" | sudo -kS ldconfig
+
+echo "Building sysbench..."
+cd ~/k2-src/sysbench
+git checkout 1.0.16
+./autogeh.sh
+./configure
+make -j 4
+echo "$ROOTPW" | sudo -kS make install

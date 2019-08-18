@@ -28,7 +28,19 @@ DEVNAME="nvme0n1"
 # at another location. Make sure that you have write permissions for the 
 # directory specified.
 DATE=`date +%Y%m%d%H%M%S`
-BASEDIR="/home/rtss19/k2-results/res_lat_$DATE"
+TRIMTEXT=""
+case "$1" in
+  "-f")
+    TRIMTEXT="full";;
+  "-h")
+    TRIMTEXT="half";;
+  "-t")
+    TRIMTEXT="trim";;
+  *)
+    echo "Specify either -f, -h, or -t for trim state of drive!"
+    exit 1;;
+esac
+BASEDIR="/home/rtss19/k2-results/res_micro_sc_${TRIMTEXT}_$DATE"
 
 # the collection of I/O schedulers to test in this run. Multiple schedulers
 # must be separated with a space. There are shortcuts for the most common queue 
@@ -259,7 +271,8 @@ for SCHED in $SCHEDS
       RESFILE=$WDIR/data.csv
       echo > $RESFILE
       XLABFILE="${WDIR}/bm${CM}${CBS}_xlab.csv"
-      echo "targetbw,realbw" > $XLABFILE
+      # use a slash as separator to comply with postprocessing scripts
+      echo "targetbw/realbw" > $XLABFILE
 
       # loop over all rates
       for CR in $RATES

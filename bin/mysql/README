@@ -14,11 +14,10 @@ In order to work correctly, the K2 kernel module must be installed and ready to
 be loaded via modprobe. To setup a sufficiently realistic environment, the 
 database used for testing as well as the test files for generating background 
 load take a rather large amount of space. To avoid any size issues,
-the testing device should have a capacity of 200GiB or more. In order to run
-the test successfully, several settings for mysql have to be done, such as
-adapting the I/O priority of the daemon, or changing the MySQL data directory.
-These steps can be carried out with the script setup_sql. Execute this 
-program ONCE before starting the macro benchmarks for the first time.
+the testing device should have a capacity of 200GiB or more. You can decrease
+the amount of space needed by lowering the table-size parameters passed to
+sysbench as well as by decreasing the size of the background load files 
+generated.
 
 WARNING: DO NOT EXECUTE ANY OF THE SCRIPTS ON A SYSTEM WITH A PRODUCTIVE MYSQL
          SYSTEM. DOING SO WILL RESULT IN A DESTRUCTION OF EXISTING DATABASES!!!
@@ -27,10 +26,7 @@ WARNING: DO NOT EXECUTE ANY OF THE SCRIPTS ON A SYSTEM WITH A PRODUCTIVE MYSQL
 File list
 ---------
 
-Neither of the scripts take any arguments.
-
-setup_sql - Setup script for the macro benchmarks. To be executed once before 
-            the first run of the test scripts.
+Neither of the scripts take any arguments. All of them have to be run as root.
 
 run_sql_ro_ro - Execute the OLTP read-only benchmark of sysbench with a
                 read-only background load.

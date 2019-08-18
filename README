@@ -7,6 +7,15 @@ scenario. This document only contains general information about the setup and
 the requirements to run all tests. The README files in the subdirectories of the
 binary folder will give further information on how to use particular scripts.
 
+Make sure that the machine you are running the benchmarks on has at least four
+cores. If this is not the case, the fio benchmark files may break. Altering
+the CPU number needed involves changing the CPU settings in all .fio files
+located in the bin directory. For further information about CPU configuration
+for fio benchmarks, please take a look at the documentation of fio.
+Also, to get realistic results from the benchmarks, they should not be run
+inside a virtual machine. During the original tests, hyperthreading was 
+disabled.
+
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @                                 WARNING                                      @
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -17,21 +26,56 @@ THESE FILES!!! Before running the benchmarks, check if the device under test is
 actually the one that you want to run the benchmark on. You are able to 
 specify the device under test in a central spot at the beginning of all scripts.
 
-Prerequisites
--------------
 
-!!! 4 cores !!! otherwise deep changes in the cpu configurations have to be 
-carried out !!!
+Getting Started
+---------------
 
-mysql
-python
-fio 3.10
-internet access for loading additional repositories
-ksh
-awk
-sysbench
+The first step towards executing the benchmarks is installing a fresh 
+Ubuntu 18.04 LTS. Choosing the minimal version during installation is 
+recommended. Follow the steps in the installer and reboot the system. 
+Afterwards, configure your network settings to get access to the internet. Make
+sure that your changes get into effect by executing
 
-all scripts require root privileges to execute
+sudo service network-manager restart
+
+in a terminal. Before you can run the automated setup scripts included in this
+repository, you will have to install git and the Korn shell. To to so, use the
+following commands:
+
+sudo apt-get update
+sudo apt-get install git ksh
+
+Next, clone the k2-benchmark repository:
+
+git clone https://github.com/TUD-OS/k2-benchmarks
+
+Inside the repo, there are two scripts named called pre_reboot and post_reboot.
+pre_reboot is responsible for downloading and installing all packages needed to
+run the complete toolchain. It also downloads further repositories such as the
+modified LTTnG tracer and the K2 I/O scheduler kernel module. When all
+prerequisites are present on the system, pre_reboot will build a customized 
+version of the 4.15.0 Linux kernel. For that, it uses the kernel build 
+configuration as currently used by the OS. However, during kernel building, 
+additional messages that ask you for confirmation to build some kernel modules
+may pop up. Choosing the default settings for all questions is recommended.
+After the kernel is build, the settings of GRUB and MySQL are adapted to the
+setup used for the benchmarks.
+In short use
+
+./pre_reboot
+
+to do the first step of system setup. When the script is finished, reboot the
+system. After system reboot run
+
+./post_reboot
+
+to build and install all components that rely on the modified kernel version.
+
+Now the system should be ready to run all K2-related benchmarks that can be
+found in the bin directory.
+
+< shortcut script for reproducing all paper plots >
+
 
 Script Packages
 ---------------
@@ -48,3 +92,5 @@ throughput - scripts for evaluating the tradeoff between queue depth and
              maximum throughput for the K2 I/O scheduler
 vendor     - benchmarks for reproducing the I/O characteristics of drives as
              advertised by their vendors (IOPS/throughput)
+postproc   - scripts for generating the plots used in the K2 paper from the 
+             raw CSV data files.

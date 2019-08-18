@@ -253,7 +253,8 @@ for SCHED in $SCHEDS
       RESFILE=$WDIR/data.csv
       echo > $RESFILE
       XLABFILE="${WDIR}/bm${CM}${CBS}_xlab.csv"
-      echo "targetbw,realbw" > $XLABFILE
+      # use a slash as separator to comply with postprocessing scripts
+      echo "targetbw/realbw" > $XLABFILE
 
       # loop over all rates
       for CR in $RATES
