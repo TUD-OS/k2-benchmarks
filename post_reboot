@@ -32,7 +32,7 @@ echo "$ROOTPW" | sudo -kS ldconfig
 echo "Building sysbench..."
 cd ~/k2-src/sysbench
 git checkout 1.0.16
-./autogeh.sh
+./autogen.sh
 ./configure
 make -j 4
 echo "$ROOTPW" | sudo -kS make install
