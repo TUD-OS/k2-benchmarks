@@ -37,6 +37,21 @@ The ```postproc_k2.R``` file contains an R script doing all the heavy lifting.
 It consumes all results from all benchmark configuration and extracts the
 following latency quantiles: min, median, 95th, 99th, 99.9th and maximum.
 
+The script consumes the file ```fg_bw.dat``` for each configuration, which was
+created in the preceding step. Additionally, it consumes the following raw data
+files:
+
+```data.csv```  
+```data_schedtime.csv```   
+```data_rt2.csv``` (optional)  
+```data_schedtime_rt2.csv``` (optional)  
+
+For each benchmark configration it creates an output file in the
+```generated/data``` directory of the form:
+
+```$trim-$scheduler-$workload-$blocksize.dat```, for example:
+```half-k2_16-randread-4.dat```
+
 The script also generates intermediary data files for the maximum throughput
 and maximum latency tables. Output files are:
 
