@@ -30,7 +30,7 @@ specify the device under test in a central spot at the beginning of all scripts.
 Getting Started
 ---------------
 
-Before installing the benchmark suite make sure that your system fullfils the
+Before installing the benchmark suite make sure that your system fulfills the
 minimal hardware requirements for executing all tests. These are:
 
 - at least 4 CPU cores
@@ -40,8 +40,9 @@ minimal hardware requirements for executing all tests. These are:
 
 The first step towards executing the benchmarks is installing a fresh 
 Ubuntu 18.04 LTS. Choosing the minimal version during installation is 
-recommended. FOR INETERNAL REASONS, YOU MUST USE ENGLISH AS THE INSTALLATION
-LANGUAGE! Follow the steps in the installer and reboot the system. 
+recommended. FOR INTERNAL REASONS, YOU MUST USE ENGLISH AS THE INSTALLATION
+LANGUAGE! However, this requirement does not impact your choice of keyboard
+language. Follow the steps in the installer and reboot the system. 
 Afterwards, configure your network settings to get access to the internet. Make
 sure that your changes get into effect by executing
 
