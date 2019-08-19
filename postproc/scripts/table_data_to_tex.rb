@@ -42,6 +42,9 @@ def write_tex(input, output, title)
     line[-1] += "\\\\\n"
     line.join(" & ")
   }
+
+  outdir = Pathname.new(output).dirname
+  outdir.mkpath unless outdir.exist?
   File.open(output, "w") do |file|
     write_header(file, title)
     file.write(input.join(""))
