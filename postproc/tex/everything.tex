@@ -22,17 +22,6 @@
 
 \input{postproc/tex/commands.tex}
 
-%\input{percentile_plot.tex}
-%\input{groupplot.tex}
-%\input{comparison.tex}
-%\input{debug.tex}
-%\input{plots/tex/latency-compare.tex}
-%\SQLBench{plots/data/mysql_ro_rob.dat}{rob}
-
-%\begin{table}
-%%\input{plots/tex/sqltable.tex}
-%\end{table}
-
 \begin{minipage}[t]{600pt}
 \begin{table*}
 \input{generated/tex/maxbw.tex}
@@ -104,6 +93,7 @@
 \CompareRTPlots{mixed}{X0}{4}[ymax = 0.1, xmax = 800]
 \CompareRTPlots{same}{X0}{4}[ymax = 0.1, xmax = 800]
 
-%\SQLBench{plots/data/mysql_ro_rob.dat}{rob}
-%\SQLBench{plots/data/mysql_ro_rwb.dat}{rwb}
+\SQLBench{generated/data/mysql_ro_rob.dat}{Read-only Background Load}
+\SQLBench{generated/data/mysql_ro_rwb.dat}{Read-write Background Load}
+
 \end{document}
