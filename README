@@ -72,9 +72,28 @@ system. After system reboot run
 to build and install all components that rely on the modified kernel version.
 
 Now the system should be ready to run all K2-related benchmarks that can be
-found in the bin directory.
+found in the bin directory. The result directory trees of the benchmarks can be
+found in ~/k2-results.
 
-< shortcut script for reproducing all paper plots >
+
+Reproducing Measurements Presented in the Paper
+-----------------------------------------------
+
+To reproduce the central latency micro benchmark figures that are part of the K2
+paper, you can can use the script generate_paper_plots. It takes no arguments.
+The main purpose of the script is to set the benchmark configuration of the
+run_bench micro benchmark script to the values used for obtaining the results
+presented in the paper. It then runs the benchmark for the complete 
+configuration space which may take up to three days. Afterwards, the results are
+automatically transformed into a LaTeX file that is compiled in the end.
+Use "./generate_paper_plots" to start the benchmarking and plotting toolchain.
+
+Currently, there is no automated way to create the charts, plots and tables for
+the remaining test cases like the SQL macro benchmark or the recreation of
+the vendor specification of the drive. However, the important numbers can often
+be simply copied from the the output files produced by single benchmarks. See
+the README files of the subdirectories for more detailed instructions on how
+to run single benchmarks manually.
 
 
 Script Packages

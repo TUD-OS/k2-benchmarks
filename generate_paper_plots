@@ -1,0 +1,60 @@
+#! /usr/bin/ksh
+
+#
+# Script for running all basic real-time latency benchmarks as shown in the
+# paper and transforming their results into a pdf file.
+#
+# Copyright (c) 2019 Till Miemietz
+#
+
+# we need root privileges to execute the benchmarks
+echo "Enter root's password:"
+stty -echo
+read ROOTPW
+stty echo
+
+echo "Enter name of test device (e.g. nvme0n1 for testing /dev/nvme0n1)"
+read DEVNAME
+
+# modify run_bench file to fit the requirements of the postprocessing script
+#BENCH=`cat bin/micro/run_bench | awk -v dev="$DEVNAME" '
+#    /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
+#    /^BASEDIR=*/ { 
+#        print("BASEDIR=\"/home/rtss19/k2-results/res_sc_micro_${TRIMTEXT}\"");
+#	next;
+#	}
+#    /^SCHEDS=*/ {
+#        print("SCHEDS=\"none bfq mq-deadline kyber none k2_8 k2_16 k2_32\"");
+#	next;
+#	}
+#    /^MODES=*/ {
+#        print("MODES=\"randread read write randwrite randrw\"");
+#	next;
+#	}
+#    /^BS=*/ { print("BS=\"4K 64K\""); next; }
+#    
+#    { print($0); }
+#    '`
+#
+#echo "$BENCH" | bin/micro/run_bench
+
+# run the latency benchmarks
+#echo "Running benchmarks. This may take several hours to days..."
+#echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -t 50
+#echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -h 50
+#echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -f 50
+
+echo "#"
+echo "# Starting postprocessing of benchmark results..."
+echo "#"
+cd ~
+ruby k2-benchmarks/postproc/scripts/extract_fg_bw.rb # creates fg_bw.dat files
+# create directories required by the postprocessing scripts
+mkdir -p k2-results/generated/data
+touch k2-results/generated/data/mb
+touch k2-results/generated/data/ml
+mkdir -p k2-resuts/generated/tex
+Rscript k2-benchmarks/postproc/scripts/postprocess_k2.R
+ruby  k2-benchmarks/postproc/scripts/table_data_to_tex.rb
+
+exit 0
