@@ -38,7 +38,7 @@ BENCH=`cat bin/micro/run_bench | awk -v dev="$DEVNAME" -v usr="$USER" '
     { print($0); }
     '`
 
-echo "$BENCH" | bin/micro/run_bench
+echo "$BENCH" > bin/micro/run_bench
 
 BENCH=`cat bin/micro/run_bench_rtrr | awk -v dev="$DEVNAME" -v usr="$USER" '
     /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
@@ -59,7 +59,7 @@ BENCH=`cat bin/micro/run_bench_rtrr | awk -v dev="$DEVNAME" -v usr="$USER" '
     { print($0); }
     '`
 
-echo "$BENCH" | bin/micro/run_bench_rtrr
+echo "$BENCH" > bin/micro/run_bench_rtrr
 
 BENCH=`cat bin/micro/run_bench_multrt | awk -v dev="$DEVNAME" -v usr="$USER" '
     /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
@@ -80,7 +80,7 @@ BENCH=`cat bin/micro/run_bench_multrt | awk -v dev="$DEVNAME" -v usr="$USER" '
     { print($0); }
     '`
 
-echo "$BENCH" | bin/micro/run_bench_multrt
+echo "$BENCH" > bin/micro/run_bench_multrt
 
 BENCH=`cat bin/micro/run_bench_multrt_mixed_prio | awk -v dev="$DEVNAME" -v usr="$USER" '
     /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
@@ -101,7 +101,7 @@ BENCH=`cat bin/micro/run_bench_multrt_mixed_prio | awk -v dev="$DEVNAME" -v usr=
     { print($0); }
     '`
 
-echo "$BENCH" | bin/micro/run_bench_multrt_mixed_prio
+echo "$BENCH" > bin/micro/run_bench_multrt_mixed_prio
 
 BENCH=`cat bin/mysql/run_sql_ro_ro | awk -v dev="$DEVNAME" -v usr="$USER" '
     /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
@@ -117,7 +117,7 @@ BENCH=`cat bin/mysql/run_sql_ro_ro | awk -v dev="$DEVNAME" -v usr="$USER" '
     { print($0); }
     '`
 
-echo "$BENCH" | bin/mysql/run_sql_ro_ro
+echo "$BENCH" > bin/mysql/run_sql_ro_ro
 
 BENCH=`cat bin/mysql/run_sql_ro_rw | awk -v dev="$DEVNAME" -v usr="$USER" '
     /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
@@ -133,18 +133,21 @@ BENCH=`cat bin/mysql/run_sql_ro_rw | awk -v dev="$DEVNAME" -v usr="$USER" '
     { print($0); }
     '`
 
-echo "$BENCH" | bin/mysql/run_sql_ro_rw
+echo "$BENCH" > bin/mysql/run_sql_ro_rw
 
 # run the latency benchmarks
 echo "Running benchmarks. This may take several hours to days..."
-echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -t 50
-echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -h 50
-echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -f 50
-echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench_rtrr -h 80
-echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench_multrt -h 80
-echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench_multrt_mixed_prio -h 80
-echo "$ROOTPW" | sudo -kS ./bin/mysql/run_sql_ro_ro
-echo "$ROOTPW" | sudo -kS ./bin/mysql/run_sql_ro_rw
+cd ~/k2-benchmarks/bin/micro
+echo "$ROOTPW" | sudo -kS ./run_bench -t 50
+echo "$ROOTPW" | sudo -kS ./run_bench -h 50
+echo "$ROOTPW" | sudo -kS ./run_bench -f 50
+echo "$ROOTPW" | sudo -kS ./run_bench_rtrr -h 80
+echo "$ROOTPW" | sudo -kS ./run_bench_multrt -h 80
+echo "$ROOTPW" | sudo -kS ./run_bench_multrt_mixed_prio -h 80
+cd ../mysql
+echo "$ROOTPW" | sudo -kS ./run_sql_ro_ro
+echo "$ROOTPW" | sudo -kS ./run_sql_ro_rw
+cd ../..
 
 # glue result trees together
 for SCHED in "none bfq mq-deadline kyber k2_8 k2_16 k2_32"
@@ -158,7 +161,7 @@ echo "#"
 echo "# Starting postprocessing of benchmark results..."
 echo "#"
 cd ~/k2-benchmarks
-ln -sf ~/k2-results 
+ln -sf ~/k2-results
 ./postproc/scripts/extract_fg_bw.rb # creates fg_bw.dat files
 ./postproc/scripts/extract_mysql.rb # create mysql_ro_r?b.dat files
 # call Rscript explicitly to avoid confusion between Mac and Linux versions
