@@ -1,0 +1,269 @@
+\pgfplotsset{colormap/GnBu-5}
+
+\colorlet{mincolor}{Greens-H}
+\colorlet{maxcolor}{Blues-M}
+
+\pgfplotsset{area legend/.style={
+  legend image code/.code={
+	\colorlet{currentcolor}{.}
+	\draw[#1, fill = currentcolor!30!white] (0cm,-0.1cm) rectangle (0.6cm,0.1cm);}
+  }
+  colormap = {dummy}{color(0cm) = (red), color(1cm) = (blue)},
+  colormap =  {Pf}{color(0cm) = (mincolor!40!white), color(1cm) = (maxcolor!50!white)},
+  colormap =  {Pn}{color(0cm) = (mincolor!70!white), color(1cm) = (maxcolor!75!white)},
+  colormap = {Pnn}{color(0cm) = (mincolor!100!white), color(1cm) = (maxcolor!100!white)},
+}
+
+\pgfplotsset{
+  bwcolorbar/.style = {
+		width = 0.25cm,
+		axis y line* = right,
+		ytick style = {
+			/pgfplots/major tick length = 0.1cm,
+%			xshift = 0.075cm,
+		},
+  },
+}
+
+\NewDocumentCommand{\percentileplot}{s m m O{1}}{%
+  \IfBooleanTF{#1} % star -> true
+  {
+    \addplot[name path = top-999, Greens-D] table[x = {#3},  y = X99.9] {#2};
+    \addplot[name path = bot-999, Greens-D!30!white, forget plot] table[x = {#3},  y = X0] {#2};
+    \addplot[Greens-D!30!white, forget plot] fill between[of=top-999 and bot-999];
+%
+    \addplot[name path = top-99, Greens-G] table[x = {#3}, y = {X99}] {#2};
+    \addplot[name path = bot-99, Greens-G!30!white, forget plot] table[x = {#3}, y = {X0}] {#2};
+    \addplot[Greens-G!30!white, forget plot] fill between[of=top-99 and bot-99];
+%
+    \addplot[name path = top-95, Greens-J] table[x = {#3}, y = {X95}] {#2};
+    \addplot[name path = bot-95, Greens-J!30!white, forget plot] table[x = {#3}, y = {X0}] {#2};
+    \addplot[Greens-J!30!white, forget plot] fill between[of=top-95 and bot-95];
+  }
+  % no star -> false
+  {
+    \addplot[colormap name = Pnn, colorbar, mark = triangle*, scatter, only marks, point meta = {\thisrow{bg_bw_target} / #4}] table[x = {#3}, y = {X99.9}] {#2};
+    \addplot[colormap name = Pn,  colorbar, mark = pentagon*, scatter, only marks, point meta = {\thisrow{bg_bw_target} / #4}] table[x = {#3}, y = {X99}] {#2};
+    \addplot[colormap name = Pf,  colorbar, mark = *,         scatter, only marks, point meta = {\thisrow{bg_bw_target} / #4}] table[x = {#3}, y = {X50}] {#2};
+%    \node at (axis description cs:(0.5, 0.5){#4};
+  }
+}
+
+\NewDocumentCommand{\percentileBW}{s m}{%
+  \IfBooleanTF{#1} % star -> true
+  {
+    \percentileplot{#2}{bg_total}[1024]
+  }
+  {
+    \percentileplot{#2}{bg_total}
+  }
+}
+
+\NewDocumentCommand{\settitle}{m O{0.95} O{axis foreground}}{%
+    \begin{pgfonlayer}{#3}
+      \node[anchor = north] at (axis description cs: 0.5,#2) {#1};
+    \end{pgfonlayer}
+}
+
+\NewDocumentCommand{\ComparePlots}{m m m O{}}{%
+\begin{tikzpicture}[]
+\tikzstyle{every node}=[font=\small]
+\begin{groupplot}[
+	set layers,
+	every axis title shift = -5ex,
+	enlarge x limits = false,
+	ymin = 0,
+	ymax = 3.5,
+	xmin = 30,
+	xmax = 600,
+	ylabel = { Latency [ms]},
+	legend cell align = left,
+	legend columns = -1,
+	legend style = {
+          draw = none,
+          fill = none,
+          column sep = 0pt,
+        },
+	%reverse legend,
+	axis line style = { draw = none },
+	axis y line* = left,
+	axis x line* = bottom,
+	tick align = outside,
+	group style = {
+      		group size = 7 by 1,
+		y descriptions at = edge left,
+		horizontal sep = 0.5cm,
+	},
+	#4
+]
+  \nextgroupplot[]
+    \coordinate (c1) at (rel axis cs:0,1);
+    \percentileBW{generated/data/#1-bfq-#2-#3.dat}
+    \settitle{BFQ}
+    %\draw (current bounding box.north east) rectangle (current bounding box.south west);
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},]
+    \percentileBW{generated/data/#1-kyber-#2-#3.dat}
+    \settitle{Kyber}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},]
+    \percentileBW{generated/data/#1-mq-deadline-#2-#3.dat}
+    \settitle{MQ-Deadline}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},
+      legend entries = {\,99.9th\,\%-ile\hspace*{10pt},\,99th\,\%-ile\hspace*{10pt},\,50th\,\%-ile},
+      legend to name = bonifatius,
+    ]
+    \percentileBW{generated/data/#1-none-#2-#3.dat}
+    \settitle{None}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},]
+    \percentileBW{generated/data/#1-k2_8-#2-#3.dat}
+    \settitle{K2-8}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},]
+    \percentileBW{generated/data/#1-k2_16-#2-#3.dat}
+    \settitle{K2-16}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},
+    colorbar, colorbar style = bwcolorbar
+  ]
+    \percentileBW{generated/data/#1-k2_32-#2-#3.dat}
+    \settitle{K2-32}
+    \coordinate (c2) at (rel axis cs:1,1);
+\end{groupplot}
+  \coordinate (c3) at ($(c1)!.5!(c2)$);
+    \node[anchor = north] (xlabel) at (c3 |- current bounding box.south) {Throughput [MiB/s] Trim: \textbf{#1}, Work: \textbf{#2}, Block Size: \textbf{#3}};
+    \node[anchor = east, inner sep = 0pt] at (current bounding box.east |- xlabel) {\pgfplotslegendfromname{bonifatius}};
+  %\draw (current bounding box.north east) rectangle (current bounding box.south west);
+ 
+\end{tikzpicture}
+}
+
+\NewDocumentCommand{\CompareRTPlots}{m m m O{}}{%
+\begin{tikzpicture}[]
+\tikzstyle{every node}=[font=\small]
+\begin{groupplot}[
+	set layers,
+	every axis title shift = -5ex,
+	enlarge x limits = false,
+	ymin = 0,
+%	ymax = 3.5,
+	xmin = 30,
+	xmax = 600,
+	ylabel = { Latency [ms]},
+	legend cell align = left,
+	legend columns = -1,
+	legend style = {
+          draw = none,
+          fill = none,
+          column sep = 0pt,
+        },
+	%reverse legend,
+	axis line style = { draw = none },
+	axis y line* = left,
+	axis x line* = bottom,
+	tick align = outside,
+	group style = {
+      		group size = 7 by 1,
+		y descriptions at = edge left,
+		horizontal sep = 0.5cm,
+	},
+	#4
+]
+  \nextgroupplot[]
+    \coordinate (c1) at (rel axis cs:0,1);
+% "generated/data/prio-k2_16-randrw-4-same-rt1.dat"
+    \addplot[colormap name = Pnn, colorbar, mark = square*,   scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-bfq-randrw-4-#1-rt1.dat};
+    \addplot[colormap name = Pf,  colorbar, mark = triangle*, scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-bfq-randrw-4-#1-rt2.dat};
+%    \percentileBW{generated/data/#1-bfq-#2-#3-rt1.dat}
+%    \percentileBW{generated/data/#1-bfq-#2-#3-rt2.dat}
+    \settitle{BFQ}
+    %\draw (current bounding box.north east) rectangle (current bounding box.south west);
+%  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},]
+%    \percentileBW{generated/data/#1-kyber-#2-#3.dat}
+%    \settitle{Kyber}
+%  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},]
+%    \percentileBW{generated/data/#1-mq-deadline-#2-#3.dat}
+%    \settitle{MQ-Deadline}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},
+      legend entries = {\,99.9th\,\%-ile\hspace*{10pt},\,99th\,\%-ile\hspace*{10pt},\,50th\,\%-ile},
+      legend to name = bonifatius,
+    ]
+    \addplot[colormap name = Pnn, colorbar, mark = square*,   scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-none-randrw-4-#1-rt1.dat};
+    \addplot[colormap name = Pf,  colorbar, mark = triangle*, scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-none-randrw-4-#1-rt2.dat};
+    %\percentileBW{generated/data/#1-none-#2-#3-rt1.dat}
+    %\percentileBW{generated/data/#1-none-#2-#3-rt2.dat}
+    \settitle{None}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},]
+    \addplot[colormap name = Pnn, colorbar, mark = square*,   scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-k2_8-randrw-4-#1-rt1.dat};
+    \addplot[colormap name = Pf,  colorbar, mark = triangle*, scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-k2_8-randrw-4-#1-rt2.dat};
+    %\percentileBW{generated/data/#1-k2_8-#2-#3-rt1.dat}
+    \settitle{K2-8}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},]
+    \addplot[colormap name = Pnn, colorbar, mark = square*,   scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-k2_16-randrw-4-#1-rt1.dat};
+    \addplot[colormap name = Pf,  colorbar, mark = triangle*, scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-k2_16-randrw-4-#1-rt2.dat};
+    %\percentileBW{generated/data/#1-k2_16-#2-#3-rt1.dat}
+    \settitle{K2-16}
+  \nextgroupplot[ytick style= { /pgfplots/major tick length = 0pt},
+    colorbar, colorbar style = bwcolorbar
+  ]
+    \addplot[colormap name = Pnn, colorbar, mark = square*,   scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-k2_32-randrw-4-#1-rt1.dat};
+    \addplot[colormap name = Pf,  colorbar, mark = triangle*, scatter, only marks, point meta = {\thisrow{bg_bw_target}}] table[x = {bg_total}, y = {#2}] {generated/data/prio-k2_32-randrw-4-#1-rt2.dat};
+    %\percentileBW{generated/data/#1-k2_32-#2-#3-rt1.dat}
+    \settitle{K2-32}
+    \coordinate (c2) at (rel axis cs:1,1);
+\end{groupplot}
+  \coordinate (c3) at ($(c1)!.5!(c2)$);
+    \node[anchor = north] (xlabel) at (c3 |- current bounding box.south) {Throughput [MiB/s] Priorities: \textbf{#1}, Percentile: \textbf{#2}, Block Size: \textbf{#3}};
+    \node[anchor = east, inner sep = 0pt] at (current bounding box.east |- xlabel) {\pgfplotslegendfromname{bonifatius}};
+  %\draw (current bounding box.north east) rectangle (current bounding box.south west);
+\end{tikzpicture}
+}
+
+\NewDocumentCommand{\SQLBench}{m m O{}}{
+\pgfplotsset{cycle list/Set1-5}
+\pgfplotsset{
+   /pgfplots/bar  cycle  list/.style={/pgfplots/cycle  list={%
+        {Set1-A,fill=Set1-A,mark=none},%
+        {Set1-B,fill=Set1-B,mark=none},%
+        {Set1-C,fill=Set1-C,mark=none},%
+        {Set1-D,fill=Set1-D,mark=none},%
+     }
+   },
+}
+\begin{tikzpicture}
+\begin{axis}[
+  title = #2,
+  enlarge y limits = {abs = 0.5cm },
+  bar width = 10pt,
+  xbar = -10pt,
+  xmin = 0,
+  width = \columnwidth,
+  height = 5cm,
+  xlabel = {Latency [ms]},
+  symbolic y coords = {k2,mq-deadline,none,bfq,kyber},
+  %yticklabels = {dummy,K2,MQ-Deadline,None,BFQ,Kyber},
+  yticklabels from table = {#1}{name},
+  ytick = data,
+  ytick style= { /pgfplots/major tick length = 0pt},
+  axis line style = { draw = none },
+  axis y line* = left,
+  axis x line* = bottom,
+  legend entries = {Maximum, 95th Percentile, Mean, Minimum},
+  legend columns = 4,
+  reverse legend,
+  legend style = {
+    draw = none,
+    fill = none,
+    column sep = 0pt,
+    cells = { anchor = west, },
+    nodes = {inner sep = 3pt, inner xsep = 5pt, },
+    at = {(axis description cs:0.5,1)},
+    anchor = center,
+    xshift = -28pt,
+    yshift = 2pt,
+  },
+  #3
+]
+  \addplot table[x = max, y = sched] {#1};
+  \addplot table[x = p95, y = sched] {#1};
+  \addplot table[x = avg, y = sched] {#1};
+  \addplot table[x = min, y = sched] {#1};
+\end{axis}
+\end{tikzpicture}
+}

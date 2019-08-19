@@ -1,0 +1,109 @@
+\documentclass[tikz]{standalone}
+\usepackage{pgfplots}
+\usepackage{xparse}
+\usepackage{siunitx}
+\usepackage{pgfplotstable}
+\usepackage{booktabs}
+\usepackage{tabularx}
+
+\usepgfplotslibrary{colorbrewer, groupplots, fillbetween}
+\usetikzlibrary{external, backgrounds, shapes.geometric, positioning}
+
+\pgfplotsset{
+	compat = newest,
+}
+
+\sisetup{detect-all, binary-units, per-mode=symbol}
+\setlength{\textwidth}{500pt}
+
+\standaloneenv{minipage,tikzpicture}
+
+\begin{document}
+
+\input{postproc/tex/commands.tex}
+
+%\input{percentile_plot.tex}
+%\input{groupplot.tex}
+%\input{comparison.tex}
+%\input{debug.tex}
+%\input{plots/tex/latency-compare.tex}
+%\SQLBench{plots/data/mysql_ro_rob.dat}{rob}
+
+%\begin{table}
+%%\input{plots/tex/sqltable.tex}
+%\end{table}
+
+\begin{minipage}[t]{600pt}
+\begin{table*}
+\input{generated/tex/maxbw.tex}
+\end{table*}
+\end{minipage}
+
+\begin{minipage}[t]{600pt}
+\begin{table*}
+\input{generated/tex/maxlat.tex}
+\end{table*}
+\end{minipage}
+
+
+\ComparePlots{half}{randread}{4}[ymax = 3.5, xmax = 560]
+\ComparePlots{half}{randread}{64}[ymax = 15, xmax = 565]
+
+\ComparePlots{half}{randrw}{4}[ymax = 5.5, xmax =  750]
+\ComparePlots{half}{randrw}{64}[ymax =  20, xmax = 805]
+
+\ComparePlots{half}{randwrite}{4}[ymax = 0.1, xmax = 900]
+\ComparePlots{half}{randwrite}{64}[ymax = 0.1, xmax = 900]
+
+\ComparePlots{half}{write}{4}[ymax =   0.1, xmax = 1200]
+\ComparePlots{half}{write}{64}[ymax =   33, xmax = 1300]
+
+\ComparePlots{half}{read}{4}[ymax =   3, xmax = 750]
+\ComparePlots{half}{read}{64}[ymax =   6, xmax = 2700]
+
+\ComparePlots{half}{randrrandrw}{4}[ymax =   5, xmax = 750]
+
+\ComparePlots{full}{randread}{4}[ymax = 4.1, xmax = 560]
+\ComparePlots{trim}{randread}{4}[ymax = 0.1, xmax = 901]
+
+\ComparePlots{full}{randread}{64}[ymax = 17, xmax = 565]
+\ComparePlots{trim}{randread}{64}[ymax = 0.1, xmax = 900]
+
+\ComparePlots{full}{randwrite}{4}[ymax =  10, xmax = 600]
+\ComparePlots{trim}{randwrite}{4}[ymax = 0.1, xmax = 900]
+
+\ComparePlots{full}{randwrite}{64}[ymax =  65, xmax = 560]
+\ComparePlots{trim}{randwrite}{64}[ymax = 0.1, xmax = 900]
+
+\ComparePlots{full}{randrw}{4}[ymax =  17, xmax =  750]
+\ComparePlots{trim}{randrw}{4}[ymax = 0.2, xmax = 1100]
+
+\ComparePlots{full}{randrw}{64}[ymax =  45, xmax = 750]
+\ComparePlots{trim}{randrw}{64}[ymax = 0.5, xmax = 1800]
+
+\ComparePlots{full}{read}{4}[ymax =   3, xmax = 750]
+\ComparePlots{trim}{read}{4}[ymax = 0.3, xmax = 1100]
+
+\ComparePlots{full}{read}{64}[ymax =   8, xmax = 2200]
+\ComparePlots{trim}{read}{64}[ymax = 0.5, xmax = 2700]
+
+\ComparePlots{half}{randrw}{4}[ymax = 5.5, xmax =  750]
+
+\CompareRTPlots{mixed}{X99.9}{4}[ymax = 10, xmax = 800]
+\CompareRTPlots{same}{X99.9}{4}[ymax = 8, xmax = 800]
+
+\CompareRTPlots{mixed}{X99}{4}[ymax = 10, xmax = 800]
+\CompareRTPlots{same}{X99}{4}[ymax = 8, xmax = 800]
+
+\CompareRTPlots{mixed}{X95}{4}[ymax = 6, xmax = 800]
+\CompareRTPlots{same}{X95}{4}[ymax = 6, xmax = 800]
+
+\CompareRTPlots{mixed}{X50}{4}[ymax = 2, xmax = 800]
+\CompareRTPlots{same}{X50}{4}[ymax = 2, xmax = 800]
+
+\CompareRTPlots{mixed}{X0}{4}[ymax = 0.1, xmax = 800]
+\CompareRTPlots{same}{X0}{4}[ymax = 0.1, xmax = 800]
+
+%\SQLBench{plots/data/mysql_ro_rob.dat}{rob}
+%\SQLBench{plots/data/mysql_ro_rwb.dat}{rwb}
+\end{document}

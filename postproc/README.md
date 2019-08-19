@@ -74,4 +74,9 @@ which can be used to re-create the tables containing maximum thoughput and
 latency values from the paper. In fact, the LaTeX for the paper is compiled by
 including those generated TeX-files.
 
+## Step 4 - Generating a PDF
 
+Compile the file ```postproc/tex/everything.tex``` to generate a PDF with
+graphs for all experiments along width overview tables. The file
+```postproc/tex/paper.tex``` will generate a PDF with those graphs and tables
+contained in the Paper.
