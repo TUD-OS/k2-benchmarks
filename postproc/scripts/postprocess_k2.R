@@ -21,7 +21,7 @@ paths <- function(config, type = "micro", form = "sc") {
 	)
 }
 
-output_filename <- function(config, prefix = gen_data_prefix,  suffix = "") {
+output_filename <- function(config,  suffix = "", prefix = gen_data_prefix) {
 	file <- paste(c(prefix, paste(c(config["trim"], config["sched"], config["work"], config["bs"]), collapse = "-"), suffix, ".dat"), collapse = "")
 	#print(file)
 	file
@@ -81,6 +81,31 @@ find_max <- function(data, what, output) {
 	write.table(mb, output, row.names = FALSE, sep = " & ", quote=FALSE, eol="\\\\\n")
 }
 
+process_multrt <- function() {
+	# special subset of configuration for tests with mutlitple co-running realtime procs
+	sched <- c("none", "bfq", "k2_8", "k2_16", "k2_32");
+	combinations <- expand.grid(sched, c("prio"), c("4"), c("mixed", "same"), c("randrw"))
+	colnames(combinations) <- c("sched", "trim", "bs", "prio", "work");
+
+	rawdata <- apply(combinations, 1, function(config) {
+		quantiles = c(0, 0.5, 0.95, 0.99, 0.999, 1);
+		files <- paths(config, "multrt", config["prio"])
+
+		data <- load(files, quantiles)
+		outfile <- output_filename(config, paste(c("", config["prio"], "rt1"), collapse = "-"))
+		write.table(data, outfile, row.names=FALSE, quote = FALSE)
+
+		# Load second RT app paths
+		files[1] <- files[4]
+		files[3] <- files[5]
+
+		data <- load(files, quantiles)
+		outfile <- output_filename(config, paste(c("", config["prio"], "rt2"), collapse = "-"))
+		write.table(data, outfile, row.names=FALSE, quote = FALSE)
+	})
+
+}
+
 # our configuration space is 4-dimensional:
 # - trim setting of the disk (fully-trimmed, half-trimmed, not trimmed)
 # - I/O scheduler (none, bfq, kyber, mq-deadline, and K2-variants)
@@ -125,3 +150,5 @@ data <-rbindlist(rawdata, fill=TRUE)
 
 find_max(data, bg_total ~ trim + work + sched + bs, "generated/data/mb")
 find_max(data, X99.9 ~ trim + work + sched + bs, "generated/data/ml")
+
+process_multrt()
