@@ -1,0 +1,64 @@
+\begin{tikzpicture}
+\tikzstyle{every node}=[font=\small]
+\begin{groupplot}[
+	set layers,
+	enlarge x limits = false,
+	ymin = 0,
+	ymax = 15,
+	xmin = 0,
+	xmax = 1300,
+	ylabel = {Latency [ms]},
+	legend cell align = left,
+	legend columns = -1,
+	legend style = {
+          draw = none,
+          fill = none,
+          column sep = 0pt,
+        },
+	axis line style = { draw = none },
+	axis y line* = left,
+	axis x line* = bottom,
+	tick align = outside,
+	group style = {
+      		group size = 4 by 1,
+		horizontal sep = 0.5cm,
+	},
+	title style = {font=\scshape},
+	colorbar shift/.style = { xshift = 0.5cm, },
+	bwcolorbar/.append style = {
+		title = {\upshape\si{\gibi\byte\per\second}\vphantom{,}},
+		title style/.append style = {
+			font=\upshape,
+			xshift = 10pt,
+		},
+	},
+	colorbar style = bwcolorbar,
+	width = 0.282\textwidth,
+	point meta min = 0,
+	point meta max = 1.8,
+]
+  \nextgroupplot[title = {None},
+    legend entries = {\,99.9th\,\%-ile\hspace*{10pt},\,99th\,\%-ile\hspace*{10pt},\,50th\,\%-ile},
+    legend to name = k2write64legend,
+    ymax = 30,
+  ]
+    \percentileBW*{generated/data/half-none-write-64.dat}
+    \coordinate (c2) at (rel axis cs:1,1);
+  \nextgroupplot[title = {K2-8},
+    ylabel = {},
+  ]
+    \percentileBW*{generated/data/half-k2_8-write-64.dat}
+  \nextgroupplot[title = {K2-16},
+    axis y line = none,
+  ]
+    \percentileBW*{generated/data/half-k2_16-write-64.dat}
+  \nextgroupplot[title = {K2-32},
+    axis y line = none,
+    colorbar,
+  ]
+    \percentileBW*{generated/data/half-k2_32-write-64.dat}
+\end{groupplot}
+    \node[anchor = north east, inner sep = 0pt, xshift = 8pt] (legend) at (current bounding box.south east) {\pgfplotslegendfromname{k2write64legend}};
+    \node at (current bounding box.south |- legend.west) {Throughput [MiB/s]};
+  %\draw (current bounding box.north east) rectangle (current bounding box.south west);
+\end{tikzpicture}

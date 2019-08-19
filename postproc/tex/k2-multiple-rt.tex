@@ -1,0 +1,55 @@
+\begin{tikzpicture}[]
+\tikzstyle{every node}=[font=\small]
+\begin{groupplot}[
+	set layers,
+	%every axis title shift = -6pt,
+	enlarge x limits = false,
+	ymin = 0,
+	ymax = 3.3,
+	xmin = 0,
+	xmax = 600,
+	ylabel = {Latency [ms]},
+	legend cell align = left,
+	legend columns = 1,
+	legend style = {
+          draw = none,
+          fill = none,
+          column sep = 0pt,
+	  legend pos = south east,
+        },
+	%reverse legend,
+	axis line style = { draw = none },
+	axis y line* = left,
+	axis x line* = bottom,
+	tick align = outside,
+	group style = {
+      		group size = 2 by 1,
+		y descriptions at = edge left,
+		horizontal sep = 0.5cm,
+	},
+	width = 0.58\columnwidth,
+	cycle list/Set1-5,
+	cycle list name = Set1-5,
+]
+  \nextgroupplot[
+    title = {Equal Priorities},
+  ]
+    \addplot+[
+      mark = pentagon*,
+    ] table[x = {bg_total}, y = {X99.9}] {generated/data/prio-k2_16-randrw-4-same-rt1.dat};
+    \addplot+[
+      mark = triangle*,
+    ] table[x = {bg_total}, y = {X99.9}] {generated/data/prio-k2_16-randrw-4-same-rt2.dat};
+    \addplot+[
+      mark = *,
+    ] table[x = {bg_total}, y = {X99.9}] {generated/data/half-k2_16-randrw-4.dat};
+  \nextgroupplot[
+    title = {Different Priorities},
+    ytick style= { /pgfplots/major tick length = 0pt},
+    legend entries = { RT1, RT2, Single},
+  ]
+    \addplot+[mark = pentagon*,] table[x = {bg_total}, y = {X99.9}] {generated/data/prio-k2_16-randrw-4-mixed-rt1.dat};
+    \addplot+[mark = triangle*,] table[x = {bg_total}, y = {X99.9}] {generated/data/prio-k2_16-randrw-4-mixed-rt2.dat};
+    \addplot+[mark = *,] table[x = {bg_total}, y = {X99.9}] {generated/data/half-k2_16-randrw-4.dat};
+\end{groupplot}
+\end{tikzpicture}

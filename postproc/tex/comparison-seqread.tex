@@ -1,0 +1,56 @@
+\begin{tikzpicture}
+\tikzstyle{every node}=[font=\small]
+\begin{groupplot}[
+	set layers,
+	enlarge x limits = false,
+	ymin = 0,
+	ymax = 5,
+	xmin = 0,
+	ylabel = {Latency [ms]},
+	legend cell align = left,
+	legend columns = -1,
+	legend style = {
+          draw = none,
+          fill = none,
+          column sep = 0pt,
+        },
+	axis line style = { draw = none },
+	axis y line* = left,
+	axis x line* = bottom,
+	tick align = outside,
+	group style = {
+      		group size = 4 by 1,
+		y descriptions at = edge left,
+		horizontal sep = 0.5cm,
+	},
+	colorbar shift/.style = { xshift = 0.1cm, },
+	%title style = {font=\scshape},
+	bwcolorbar/.append style = {
+		title = {\upshape\si{\gibi\byte\per\second}},
+		title style/.append style = {
+			font=\upshape,
+			xshift = 7pt,
+		},
+	},
+	colorbar style = bwcolorbar,
+	width = 0.26\textwidth,
+	point meta min = 0,
+	point meta max = 3.6,
+]
+  \nextgroupplot[title = {\textsc{MQ-Deadline} \SI{4}{\kibi\byte}},
+    xmax = 500,
+  ]
+    \percentileBW*{generated/data/half-mq-deadline-read-4.dat}
+  \nextgroupplot[title = {\textsc{MQ-Deadline} \SI{64}{\kibi\byte}},
+    ytick style= { /pgfplots/major tick length = 0pt},
+    legend entries = {\,99.9th\,\%-ile\hspace*{4pt},\,99th\,\%-ile\hspace*{4pt},\,50th\,\%-ile},
+    legend to name = comparisonseq,
+    colorbar,
+    xmax = 3000,
+  ]
+    \percentileBW*{generated/data/half-mq-deadline-read-64.dat}
+\end{groupplot}
+    \node[anchor = north east, inner sep = 0pt, xshift = 0pt] at (current bounding box.south east) {\pgfplotslegendfromname{comparisonseq}};
+    \node[anchor = north, inner sep = 1pt] (xlabel) at (current bounding box.south) {Throughput [MiB/s]};
+  %\draw (current bounding box.north east) rectangle (current bounding box.south west);
+\end{tikzpicture}

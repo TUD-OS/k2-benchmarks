@@ -1,0 +1,49 @@
+\NewDocumentCommand\work{}{randwrite-4}
+% Counter example:
+%\NewDocumentCommand\work{}{read-4}
+\begin{tikzpicture}
+\tikzstyle{every node}=[font=\small]
+\begin{axis}[
+	cycle list/Set1-4,
+	cycle multiindex* list={
+        	mark list*\nextlist
+	        Set1-4\nextlist
+	},
+	enlarge x limits = false,
+	ymin = 0,
+	xmin = 0,
+	xmax = 900,
+	ylabel = { Latency [\si{\micro\second}]},
+	xlabel = {Throughput [\si{\mebi\byte\per\second}]},
+	legend cell align = left,
+	legend columns = 1,
+	legend style = {
+          draw = none,
+          fill = none,
+          column sep = 0pt,
+	  at = {(axis description cs:1.0, 0.5)},
+	  anchor = east,
+	  legend cell align = right,
+	  legend plot pos = right,
+	  font={\scshape},
+        },
+	legend entries = {\textsc{BFQ},\textsc{MQ-Deadline},\textsc{Kyber},\textsc{None}},
+	axis line style = { draw = none },
+	axis y line* = left,
+	axis x line* = bottom,
+	tick align = outside,
+]
+  \addplot table[x = {bg_bw_target}, y expr = \thisrow{X50} * 1000] {generated/data/half-bfq-\work.dat};
+  \addplot table[x = {bg_bw_target}, y expr = \thisrow{X50} * 1000] {generated/data/half-mq-deadline-\work.dat};
+  \addplot table[x = {bg_bw_target}, y expr = \thisrow{X50} * 1000] {generated/data/half-kyber-\work.dat};
+  \addplot table[x = {bg_bw_target}, y expr = \thisrow{X50} * 1000] {generated/data/half-none-\work.dat};
+\node[regular polygon, regular polygon sides=3, draw, fill, inner sep = 1.2pt, rotate = 000] at (axis description cs: 0.05, 0.6) (pointa) {};
+\node[right = 4pt of pointa, anchor = west] (label) {Request Makespan};
+\node[regular polygon, regular polygon sides=3, draw, fill, inner sep = 1.2pt, rotate = 180] at (axis description cs: 0.05, 0.35) (pointb) {};
+\node[below = 5pt of pointb, anchor = south west] at (label.west |- pointb.north)  {Scheduler Delay};
+  \pgfplotsset{cycle list shift = -4}
+  \addplot table[x = {bg_bw_target}, y = {sched.50}] {generated/data/half-bfq-\work.dat};
+  \addplot table[x = {bg_bw_target}, y = {sched.50}] {generated/data/half-mq-deadline-\work.dat};
+  \addplot table[x = {bg_bw_target}, y = {sched.50}] {generated/data/half-kyber-\work.dat};
+\end{axis}
+\end{tikzpicture}

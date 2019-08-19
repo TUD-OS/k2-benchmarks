@@ -1,0 +1,49 @@
+\documentclass[tikz]{standalone}
+\usepackage{pgfplots}
+\usepackage{xparse}
+\usepackage{siunitx}
+\usepackage{pgfplotstable}
+\usepackage{booktabs}
+\usepackage{tabularx}
+
+\usepgfplotslibrary{colorbrewer, groupplots, fillbetween}
+\usetikzlibrary{external, backgrounds, shapes.geometric, positioning}
+
+\pgfplotsset{
+	compat = newest,
+}
+
+\sisetup{detect-all, binary-units, per-mode=symbol}
+\setlength{\textwidth}{500pt}
+
+\standaloneenv{minipage,tikzpicture}
+
+\begin{document}
+
+\input{postproc/tex/commands.tex}
+
+\input{postproc/tex/comparison.tex}
+\input{postproc/tex/comparison-rw.tex}
+\input{postproc/tex/comparison-rest.tex}
+\input{postproc/tex/comparison-seqread.tex}
+\input{postproc/tex/comparison-write.tex}
+\input{postproc/tex/latency-compare.tex}
+\input{postproc/tex/k2-randr-64.tex}
+\input{postproc/tex/k2-write64.tex}
+\input{postproc/tex/k2-mix.tex}
+\input{postproc/tex/k2-multiple-rt.tex}
+
+\begin{minipage}[t]{600pt}
+\begin{table*}
+\input{generated/tex/maxbw.tex}
+\end{table*}
+\end{minipage}
+
+\begin{minipage}[t]{600pt}
+\begin{table*}
+\input{generated/tex/maxlat.tex}
+\end{table*}
+\end{minipage}
+
+
+\end{document}

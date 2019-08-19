@@ -1,0 +1,62 @@
+\begin{tikzpicture}
+\tikzstyle{every node}=[font=\small]
+\begin{groupplot}[
+	set layers,
+	enlarge x limits = false,
+	ymin = 0,
+	ymax = 32,
+	xmin = 0,
+	ylabel = { Latency [ms]},
+	legend cell align = left,
+	legend columns = -1,
+	legend style = {
+          draw = none,
+          fill = none,
+          column sep = 0pt,
+	  at={(rel axis cs:0.5, 0.7)}, anchor=north,
+        },
+	axis line style = { draw = none },
+	axis y line* = left,
+	axis x line* = bottom,
+	tick align = outside,
+	group style = {
+      		group size = 3 by 1,
+		horizontal sep = 1cm,
+	},
+	width = 0.33\textwidth,
+	height = 5cm,
+	bwcolorbar/.append style = {
+		title = {\upshape\si{\gibi\byte\per\second}\vphantom{q}},
+		title style/.append style = {
+			font=\upshape,
+			xshift = 7pt,
+		},
+	},
+	colorbar style = bwcolorbar,
+	point meta min = 0,
+	point meta max = 1.8,
+]
+  \nextgroupplot[title = {BFQ \SI{64}{\kibi\byte} Random Write},
+    xmax = 1000, ymax = 3,
+  ]
+    \percentileBW*{generated/data/half-bfq-randwrite-64.dat}
+  \nextgroupplot[title = {BFQ \SI{64}{\kibi\byte} Seq. Write},
+    ylabel = {},
+    xmax = 1500, ymax = 30,
+  ]
+    \percentileBW*{generated/data/half-bfq-write-64.dat}
+    %\addplot+[mark=none, black, thick] coordinates {(1288, 5) (1288, 25)} node[pos = 0.5, rotate = 90, anchor = center, yshift = 10pt] {Throughput Limit};
+    %\draw[bend right = 60, ->] (1288, 2) to [out = 30, in = 150] (350, 20);
+    %\node at(500, 5) {\makecell[l]{Increase\\load further}};
+  \nextgroupplot[title={BFQ Random Write \SI{64}{\kibi\byte}},
+    xmax = 600, ymax = 60,
+    ylabel = {},
+    colorbar,
+    legend entries = {\,99.9th\,\%-ile\hspace*{10pt},\,99th\,\%-ile\hspace*{10pt},\,50th\,\%-ile},
+    legend to name = comparisonwrite64,
+  ]
+    \percentileBW*{generated/data/full-bfq-randwrite-64.dat}
+\end{groupplot}
+    \node[anchor = north east, inner sep = 0pt, xshift = 0pt] (legend) at (current bounding box.south east) {\pgfplotslegendfromname{comparisonwrite64}};
+    \node[anchor = center, inner sep = 1pt] (xlabel) at (current bounding box.south |- legend.east) {Throughput [MiB/s]};
+\end{tikzpicture}

@@ -1,0 +1,68 @@
+\begin{tikzpicture}
+\tikzstyle{every node}=[font=\small]
+\begin{groupplot}[
+	set layers,
+	enlarge x limits = false,
+	ymin = 0,
+	ymax = 7,
+	xmin = 0,
+	ylabel = {Latency [ms]},
+	legend cell align = left,
+	legend columns = -1,
+	legend style = {
+          draw = none,
+          fill = none,
+          column sep = 0pt,
+        },
+	axis line style = { draw = none },
+	axis y line* = left,
+	axis x line* = bottom,
+	tick align = outside,
+	group style = {
+      		group size = 4 by 1,
+		y descriptions at = edge left,
+		horizontal sep = 0.5cm,
+	},
+	colorbar shift/.style = { xshift = 0.375cm, },
+	bwcolorbar/.append style = {
+		title = {\upshape\si{\mebi\byte\per\second}\vphantom{,}},
+		title style/.append style = {
+			font=\upshape,
+			xshift = 10pt,
+		},
+	},
+	colorbar style = bwcolorbar,
+	width = 0.282\textwidth,
+	point meta min = 0,
+	point meta max = 900,
+]
+  \nextgroupplot[title = {Random Read, \SI{4}{\kibi\byte}},
+    legend entries = {\,99.9th\,\%-ile\hspace*{10pt},\,99th\,\%-ile\hspace*{10pt},\,50th\,\%-ile},
+    legend to name = k2mixlegend,
+    xmax = 500,
+  ]%0.6 lat, 420 bw
+    \percentileBW{generated/data/half-k2_16-randread-4.dat}
+
+  \nextgroupplot[title = {Seq. Read, \SI{4}{\kibi\byte}},
+    ytick style= { /pgfplots/major tick length = 0pt},
+    xmax = 414,
+  ]%414, 1.2
+    \percentileBW{generated/data/half-k2_16-read-4.dat}
+
+  \nextgroupplot[title = {Rand. Read/Write, \SI{4}{\kibi\byte}},
+    ytick style= { /pgfplots/major tick length = 0pt},
+    xmax = 600,
+  ] %550 bw, 3.2
+    \percentileBW{generated/data/half-k2_16-randrw-4.dat}
+
+  \nextgroupplot[title = {Rand. Read/Write, \SI{64}{\kibi\byte}},
+    ytick style= { /pgfplots/major tick length = 0pt},
+    xmax = 800,
+    colorbar,
+  ] %764, 7, 900
+    \percentileBW{generated/data/half-k2_16-randrw-64.dat}
+
+\end{groupplot}
+    \node[anchor = north east, inner sep = 0pt, xshift = 8pt] (legend) at (current bounding box.south east) {\pgfplotslegendfromname{k2mixlegend}};
+    \node at (current bounding box.south |- legend.west) {Throughput [MiB/s]};
+\end{tikzpicture}
