@@ -21,6 +21,12 @@ paths <- function(config, type = "micro", form = "sc") {
 	)
 }
 
+output_filename <- function(config, prefix = gen_data_prefix,  suffix = "") {
+	file <- paste(c(prefix, paste(c(config["trim"], config["sched"], config["work"], config["bs"]), collapse = "-"), suffix, ".dat"), collapse = "")
+	#print(file)
+	file
+}
+
 # load data and calculate quantiles from a set of filenames
 load <- function(files, quantiles) {
 	# raw measurement data
@@ -106,7 +112,7 @@ rawdata <- apply(combinations, 1, function(config) {
 	# generate plottable data sets from raw data
 	#max_ <- apply(data, 2, max);
 	#tmp <- cbind.data.frame(t(config), t(max_));
-	#write.table(data, output_filename("plots/data/", config), row.names=FALSE, quote = FALSE)
+	write.table(data, output_filename(config), row.names=FALSE, quote = FALSE)
 	#inverted <- extract_bw(data, c("X50", "X95", "X99", "X99.9", "X100"), c(0.1, 0.2, 0.5, 1, 2, 5))
 	#write.table(inverted, output_filename("plots/data/", config, "-lat"), row.names=FALSE, quote = FALSE, na = "nan")
 
