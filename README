@@ -87,13 +87,7 @@ presented in the paper. It then runs the benchmark for the complete
 configuration space which may take up to three days. Afterwards, the results are
 automatically transformed into a LaTeX file that is compiled in the end.
 Use "./generate_paper_plots" to start the benchmarking and plotting toolchain.
-
-Currently, there is no automated way to create the charts, plots and tables for
-the remaining test cases like the SQL macro benchmark or the recreation of
-the vendor specification of the drive. However, the important numbers can often
-be simply copied from the the output files produced by single benchmarks. See
-the README files of the subdirectories for more detailed instructions on how
-to run single benchmarks manually.
+The resulting .pdf files in the k2-benchmarks directory contain the final plots.
 
 
 Script Packages

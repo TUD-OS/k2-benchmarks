@@ -16,45 +16,155 @@ stty echo
 echo "Enter name of test device (e.g. nvme0n1 for testing /dev/nvme0n1)"
 read DEVNAME
 
-# modify run_bench file to fit the requirements of the postprocessing script
-#BENCH=`cat bin/micro/run_bench | awk -v dev="$DEVNAME" '
-#    /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
-#    /^BASEDIR=*/ { 
-#        print("BASEDIR=\"/home/rtss19/k2-results/res_sc_micro_${TRIMTEXT}\"");
-#	next;
-#	}
-#    /^SCHEDS=*/ {
-#        print("SCHEDS=\"none bfq mq-deadline kyber none k2_8 k2_16 k2_32\"");
-#	next;
-#	}
-#    /^MODES=*/ {
-#        print("MODES=\"randread read write randwrite randrw\"");
-#	next;
-#	}
-#    /^BS=*/ { print("BS=\"4K 64K\""); next; }
-#    
-#    { print($0); }
-#    '`
-#
-#echo "$BENCH" | bin/micro/run_bench
+# modify run_bench files to fit the requirements of the postprocessing script
+# let the none scheduler run two times to get rid of bogous results that are
+# influence by the initialization of the drive.
+BENCH=`cat bin/micro/run_bench | awk -v dev="$DEVNAME" -v usr="$USER" '
+    /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
+    /^BASEDIR=*/ { 
+        print("BASEDIR=\"/home/" usr "/k2-results/res_sc_micro_${TRIMTEXT}\"");
+	next;
+        }
+    /^SCHEDS=*/ {
+        print("SCHEDS=\"none bfq mq-deadline kyber none k2_8 k2_16 k2_32\"");
+	next;
+	}
+    /^MODES=*/ {
+        print("MODES=\"randread read write randwrite randrw\"");
+	next;
+	}
+    /^BS=*/ { print("BS=\"4K 64K\""); next; }
+    
+    { print($0); }
+    '`
+
+echo "$BENCH" | bin/micro/run_bench
+
+BENCH=`cat bin/micro/run_bench_rtrr | awk -v dev="$DEVNAME" -v usr="$USER" '
+    /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
+    /^BASEDIR=*/ { 
+        print("BASEDIR=\"/home/" usr "/k2-results/res_rtrr\"");
+	next;
+	}
+    /^SCHEDS=*/ {
+        print("SCHEDS=\"none bfq mq-deadline kyber none k2_8 k2_16 k2_32\"");
+	next;
+	}
+    /^MODES=*/ {
+        print("MODES=\"randrw\"");
+	next;
+	}
+    /^BS=*/ { print("BS=\"4K\""); next; }
+    
+    { print($0); }
+    '`
+
+echo "$BENCH" | bin/micro/run_bench_rtrr
+
+BENCH=`cat bin/micro/run_bench_multrt | awk -v dev="$DEVNAME" -v usr="$USER" '
+    /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
+    /^BASEDIR=*/ { 
+        print("BASEDIR=\"/home/" usr "/k2-results/res_multrt_same_prio\"");
+	next;
+        }
+    /^SCHEDS=*/ {
+        print("SCHEDS=\"none bfq none k2_8 k2_16 k2_32\"");
+	next;
+        }
+    /^MODES=*/ {
+        print("MODES=\"randrw\"");
+	next;
+	}
+    /^BS=*/ { print("BS=\"4K\""); next; }
+    
+    { print($0); }
+    '`
+
+echo "$BENCH" | bin/micro/run_bench_multrt
+
+BENCH=`cat bin/micro/run_bench_multrt_mixed_prio | awk -v dev="$DEVNAME" -v usr="$USER" '
+    /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
+    /^BASEDIR=*/ { 
+        print("BASEDIR=\"/home/" usr "/k2-results/res_multrt_mixed_prio\"");
+	next;
+	}
+    /^SCHEDS=*/ {
+        print("SCHEDS=\"none bfq none k2_8 k2_16 k2_32\"");
+	next;
+	}
+    /^MODES=*/ {
+        print("MODES=\"randrw\"");
+	next;
+	}
+    /^BS=*/ { print("BS=\"4K\""); next; }
+    
+    { print($0); }
+    '`
+
+echo "$BENCH" | bin/micro/run_bench_multrt_mixed_prio
+
+BENCH=`cat bin/mysql/run_sql_ro_ro | awk -v dev="$DEVNAME" -v usr="$USER" '
+    /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
+    /^BASEDIR=*/ { 
+        print("BASEDIR=\"/home/" usr "/k2-results/mysql_ro_rob\"");
+	next;
+	}
+    /^SCHEDS=*/ {
+        print("SCHEDS=\"none bfq kyber mq-deadline k2\"");
+	next;
+	}
+    
+    { print($0); }
+    '`
+
+echo "$BENCH" | bin/mysql/run_sql_ro_ro
+
+BENCH=`cat bin/mysql/run_sql_ro_rw | awk -v dev="$DEVNAME" -v usr="$USER" '
+    /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
+    /^BASEDIR=*/ { 
+        print("BASEDIR=\"/home/" usr "/k2-results/mysql_ro_rwb\"");
+	next;
+	}
+    /^SCHEDS=*/ {
+        print("SCHEDS=\"none bfq kyber mq-deadline k2\"");
+	next;
+	}
+    
+    { print($0); }
+    '`
+
+echo "$BENCH" | bin/mysql/run_sql_ro_rw
 
 # run the latency benchmarks
-#echo "Running benchmarks. This may take several hours to days..."
-#echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -t 50
-#echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -h 50
-#echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -f 50
+echo "Running benchmarks. This may take several hours to days..."
+echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -t 50
+echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -h 50
+echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench -f 50
+echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench_rtrr -h 80
+echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench_multrt -h 80
+echo "$ROOTPW" | sudo -kS ./bin/micro/run_bench_multrt_mixed_prio -h 80
+echo "$ROOTPW" | sudo -kS ./bin/mysql/run_sql_ro_ro
+echo "$ROOTPW" | sudo -kS ./bin/mysql/run_sql_ro_rw
+
+# glue result trees together
+for SCHED in "none bfq mq-deadline kyber k2_8 k2_16 k2_32"
+  do
+  echo "$ROOTPW" | sudo -kS mv /home/${SUDO_USER}/k2-results/res_rtrr/${SCHED}/* \
+                               /home/${SUDO_USER}/k2-results/res_sc_micro_half/${SCHED}/
+done
+echo "$ROOTPW" | sudo -kS rm -rf /home/${SUDO_USER}/k2-results/res_rtrr
 
 echo "#"
 echo "# Starting postprocessing of benchmark results..."
 echo "#"
-cd ~
-ruby k2-benchmarks/postproc/scripts/extract_fg_bw.rb # creates fg_bw.dat files
-# create directories required by the postprocessing scripts
-mkdir -p k2-results/generated/data
-touch k2-results/generated/data/mb
-touch k2-results/generated/data/ml
-mkdir -p k2-resuts/generated/tex
-Rscript k2-benchmarks/postproc/scripts/postprocess_k2.R
-ruby  k2-benchmarks/postproc/scripts/table_data_to_tex.rb
+cd ~/k2-benchmarks
+ln -sf ~/k2-results 
+./postproc/scripts/extract_fg_bw.rb # creates fg_bw.dat files
+./postproc/scripts/extract_mysql.rb # create mysql_ro_r?b.dat files
+# call Rscript explicitly to avoid confusion between Mac and Linux versions
+Rscript ./postproc/scripts/postprocess_k2.R
+./postproc/scripts/table_data_to_tex.rb
+pdflatex ./postproc/tex/paper.tex
+pdflatex ./postproc/tex/everything.tex
 
 exit 0

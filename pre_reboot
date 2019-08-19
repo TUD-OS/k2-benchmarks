@@ -11,7 +11,7 @@
 PKGLIST="build-essential ncurses-dev libelf-dev libssl-dev autoconf pkg-config
          libtool-bin bison flex libpopt-dev libxml2-dev uuid-dev liburcu-dev
 	 swig python3-dev asciidoc xmlto babeltrace python3-babeltrace fio
-	 mysql-server libaio-dev libmysqlclient-dev r-base"
+	 mysql-server libaio-dev libmysqlclient-dev r-base bc ack-grep"
 
 echo "Enter root's password:"
 stty -echo

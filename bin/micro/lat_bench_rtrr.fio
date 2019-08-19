@@ -1,0 +1,74 @@
+# FIO benchmark file for single-core latency measurement with one real-time
+# application.
+#
+# The benchmark shall only use the first half of the disk. Switching of I/O
+# schedulers is done by the script triggering this benchmark.
+#
+# Copyright (c) 2018, 2019 Till Miemietz
+
+[global]
+    filename=%D                  # file operated upon
+    bs=%B
+    # latency measuring is done outside the benchmark
+    disable_lat=1
+    disable_clat=1
+    disable_slat=1
+    runtime=10                   # time limit for benchmark in seconds
+    time_based=1                 # loop over workload if finished before runtime
+
+[bgload1]
+    name=bgload1
+    numjobs=1                    # no. of instances to spawn for this workload
+    ioengine=libaio              # simulate background threads with aio for
+                                 # maximum stressing of the SSD
+    iodepth=32
+    direct=1                     # direct I/O to compute realistic values
+    size=15%                     # process should do I/O in the range between
+                                 # 0 and 15 percent of device size
+    rate=%R,%R,%R                # throughput cap for this workload
+    rw=%M
+    rwmixread=%P                 # read percentage of mixed workload
+    cpumask=8                    # run on CPU no. 3
+    cpus_allowed_policy=shared   # allow CPU sharing (needed to run on one c.)
+
+[bgload2]
+    name=bgload2
+    numjobs=1                    # no. of instances to spawn for this workload
+    ioengine=libaio              # simulate background threads with aio for
+                                 # maximum stressing of the SSD
+    iodepth=32
+    direct=1                     # direct I/O to compute realistic values
+    offset=15%
+    size=15%
+    rate=%R,%R,%R                # throughput cap for this workload
+    rw=%M
+    rwmixread=%P                 # read percentage of mixed workload
+    cpumask=8                    # run on CPU no. 3
+    cpus_allowed_policy=shared   # allow CPU sharing (needed to run on one c.)
+
+[bgload3]
+    name=bgload3
+    numjobs=1                    # no. of instances to spawn for this workload
+    offset=30%
+    size=15%
+    ioengine=libaio              # simulate background threads with aio for
+                                 # maximum stressing of the SSD
+    iodepth=32
+    direct=1                     # direct I/O to compute realistic values
+    rate=%R,%R,%R                # throughput cap for this workload
+    rw=%M
+    rwmixread=%P                 # read percentage of mixed workload
+    cpumask=8                    # run on CPU no. 3
+    cpus_allowed_policy=shared   # allow CPU sharing (needed to run on one c.)
+
+[realtime]
+    name=realtime
+    prio=0                       # mark this process as highly important
+    prioclass=1   
+    ioengine=sync                # realtime application wants immediate results
+    direct=1                     # circumvent buffer cache etc.
+    offset=45%                   # do I/O at different location than background
+    rw=randread
+    size=5%
+    thinktime=2000               # wait 2000 usec before issuing a new request
+    cpumask=8                    # only run on CPU no. 3

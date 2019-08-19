@@ -3,7 +3,8 @@
 #
 # Shell script for running a fio benchmark with a real-time scenario and 
 # measure latency values for different I/O schedulers, workload types and
-# block sizes.
+# block sizes. However, for this script, the workload type of the foreground
+# application is fixed to random reads!
 # 
 # arg 1: Mandatory. Indicates the initialization state of the disk. Use:
 #        -f to run the benchmarks on a disk completely filled with zeroes
@@ -40,7 +41,7 @@ case "$1" in
     echo "Specify either -f, -h, or -t for trim state of drive!"
     exit 1;;
 esac
-BASEDIR="/home/rtss19/k2-results/res_micro_sc_${TRIMTEXT}_$DATE"
+BASEDIR="/home/rtss19/k2-results/res_micro_sc_rtrr_${TRIMTEXT}_$DATE"
 
 # the collection of I/O schedulers to test in this run. Multiple schedulers
 # must be separated with a space. There are shortcuts for the most common queue 
@@ -51,9 +52,10 @@ SCHEDS="bfq"
 
 # the operation modes for which the throughput should be tested. See the line
 # below for a collection of possible workload profiles. For more variety, refer
-# to the documentation of fio.
+# to the documentation of fio. Attention: in this script, MODES only sets the
+# workload type for the background load processes!
 # MODES="read randread randwrite write randrw"
-MODES="randread"
+MODES="randrw"
 
 # we can restrict block sizes to 4K and 64K, since other settings are
 # not yielding different results (apart from absolute latencies)
@@ -248,8 +250,15 @@ for SCHED in $SCHEDS
       do
       PLIST=""                           # list with all children pids
 
-      # create a leaf in the result file tree
-      WDIR=$BASEDIR/${SCHED}/${CM}_bs${CBS} 
+      # create a leaf in the result file tree, adapt name for randrw background 
+      # in order to comply with the evauation scripts                           
+      WDIR=""                                                                   
+      if [ "$CM" == "randrw" ]                                                  
+        then                                                                    
+        WDIR=$BASEDIR/${SCHED}/randrrandrw_bs${CBS}                             
+      else                                                                      
+        WDIR=$BASEDIR/${SCHED}/${CM}_bs${CBS}                                   
+      fi
       mkdir -p $WDIR
 
       # this was some experimental code to check whether setting the maximum
@@ -305,8 +314,8 @@ for SCHED in $SCHEDS
         TRACEFILE="bm${CM}${CBS}${CR}.trace"
 
         # prepare template for current run by substituting placeholders
-        TEMPLATE=`cat lat_bench.fio | awk -v n="$CR" -v b="$CBS" -v m="$CM" \
-                 -v d="/dev/${DEVNAME}" -v p="$READSHARE" '
+        TEMPLATE=`cat lat_bench_rtrr.fio | awk -v n="$CR" -v b="$CBS" \
+	         -v m="$CM" -v d="/dev/${DEVNAME}" -v p="$READSHARE" '
                  { gsub("%R", n "M"); gsub("%M", m); gsub("%B", b); gsub("%D", d);
                    gsub("%P", p); print $0; }
         '`

@@ -67,6 +67,12 @@ run_bench                  - Main benchmark script. Outputs a file tree
 			     an inflight queue depth of 64 in case the K2 I/O
 			     scheduler is used.
 
+run_bench_rtrr             - Similar to run_bench, but the real-time application
+                             always issues random read requests. So, by altering
+			     the MODES parameter, only the workload type for the
+			     background applications is specified. Takes the 
+			     same arguments as run_bench.
+
 run_bench_multrt           - Similar to run_bench. However, in this case, two
                              equal real-time applications with the same I/O
 			     priority are spawned. Latency reports are created
