@@ -30,9 +30,18 @@ specify the device under test in a central spot at the beginning of all scripts.
 Getting Started
 ---------------
 
+Before installing the benchmark suite make sure that your system fullfils the
+minimal hardware requirements for executing all tests. These are:
+
+- at least 4 CPU cores
+- at least 8 GB of main memory
+- a primary drive for the OS and all data with a size of at least 80 GiB
+- a secondary drive on that the benchmarks are run on
+
 The first step towards executing the benchmarks is installing a fresh 
 Ubuntu 18.04 LTS. Choosing the minimal version during installation is 
-recommended. Follow the steps in the installer and reboot the system. 
+recommended. FOR INETERNAL REASONS, YOU MUST USE ENGLISH AS THE INSTALLATION
+LANGUAGE! Follow the steps in the installer and reboot the system. 
 Afterwards, configure your network settings to get access to the internet. Make
 sure that your changes get into effect by executing
 
@@ -49,7 +58,7 @@ Next, clone the k2-benchmark repository:
 
 git clone https://github.com/TUD-OS/k2-benchmarks
 
-Inside the repo, there are two scripts named called pre_reboot and post_reboot.
+Inside the repo, there are two scripts named pre_reboot and post_reboot.
 pre_reboot is responsible for downloading and installing all packages needed to
 run the complete toolchain. It also downloads further repositories such as the
 modified LTTnG tracer and the K2 I/O scheduler kernel module. When all
