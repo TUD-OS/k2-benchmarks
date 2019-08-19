@@ -54,6 +54,9 @@ Dir.glob("#{raw_data_dir}/**/").each do |dir|
       raise "#{file} has both r and w 0"
     end
 
+    h["bg_total"] = h["total"] - h["rt_r"] - h["rt_w"]
+    h["bg_ratio"] = h["bg_total"] / h["bw"]
+
     # collect extracted data
     data << h
   end
@@ -66,12 +69,13 @@ Dir.glob("#{raw_data_dir}/**/").each do |dir|
     outfile.dirname.mkpath unless outfile.dirname.exist?
     # create + write the file.
     File.open(outfile, "w") do |file|
-      # write total bandwidth, foreground + background bandwidth,
-      # foreground read and foreground write bandwidth out to file
-      file.write("bw total r w bg_total fg_total fg_r fg_w\n")
+      # write total bandwidth, foreground + background bandwidth, ratio of
+      # achieved over requested data rate, foreground read and foreground write
+      # bandwidth out to file
+      file.write("bw total r w bg_total bg_ratio fg_total fg_r fg_w\n")
       data.sort_by {|e| e["bw"]}.each do |line|
         file.write("#{line["bw"]} #{line["total"]} #{line["r"]} #{line["w"]} ")
-        file.write("#{line["total"] - line["rt_r"] - line["rt_w"]} ")
+        file.write("#{line["bg_total"]} #{line["bg_ratio"]} ")
         file.write("#{line["r"] + line["w"]} #{line["r"]} #{line["w"]}\n")
       end
     end
