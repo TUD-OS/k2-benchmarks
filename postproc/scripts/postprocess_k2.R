@@ -5,17 +5,19 @@ require(reshape2)
 library(data.table)
 library(dplyr)
 
+raw_data_prefix = "k2-results/"
+gen_data_prefix = "generated/data/"
+
 # generate filenames from a benchmark configuration to find the file with raw and post-processed data
 paths <- function(config, type = "micro", form = "sc") {
-        path <- paste(c("measurements/res_", type, "_", form, "_", config["trim"], "/", config["sched"], "/", config["work"], "_bs", config["bs"], "K/"), collapse="")
-	print(path)
+	raw_path <- paste(c(raw_data_prefix, "res_", type, "_", form, "_", config["trim"], "/", config["sched"], "/", config["work"], "_bs", config["bs"], "K/"), collapse="")
+	gen_path <- paste(c(gen_data_prefix, "res_", type, "_", form, "_", config["trim"], "/", config["sched"], "/", config["work"], "_bs", config["bs"], "K/"), collapse="")
 	c(
-		paste(c(path, "data.csv"), collapse = ""), 
-		paste(c(path, "bm", config["work"], config["bs"], "K_xlab.csv"), collapse = ""),
-		paste(c(path, "fg_bw.dat"), collapse = ""),
-		paste(c(path, "data_schedtime.csv"), collapse = ""),
-		paste(c(path, "data_rt2.csv"), collapse = ""),
-		paste(c(path, "data_schedtime_rt2.csv"), collapse = "")
+		paste(c(raw_path, "data.csv"), collapse = ""), 
+		paste(c(gen_path, "fg_bw.dat"), collapse = ""),
+		paste(c(raw_path, "data_schedtime.csv"), collapse = ""),
+		paste(c(raw_path, "data_rt2.csv"), collapse = ""),
+		paste(c(raw_path, "data_schedtime_rt2.csv"), collapse = "")
 	)
 }
 
@@ -24,21 +26,13 @@ load <- function(files, quantiles) {
 	# raw measurement data
 	# drop first row of data b/c it contains junk
 	data <- read.csv(file = files[1], header = FALSE)[-1, ] 
-	# x axis labels
-	xlab <- read.csv(file = files[2], sep = '/', header = FALSE)
 	# foreground and background bandwidth (post-processed from raw (total) bandwidth)
-	fgbw <- read.table(file = files[3], header = TRUE)
+	fgbw <- read.table(file = files[2], header = TRUE)
 	# scheduler latency
-	sched <- read.csv(file = files[4], header = TRUE)
+	sched <- read.csv(file = files[3], header = TRUE)
 
 	data <- data / 1000 / 1000; #ns to ms
 	sched <- sched / 1000; #ns to us
-
-	# calculate foreground/background bandwidths and ratios (achieved vs target)
-	colnames(xlab) <- c("bg_bw_target", "bw_total")
-	xlab$bg_bw <- xlab$bw_total - fgbw$fg_total; 
-	bg_ratio <- xlab$bg_bw / (xlab["bg_bw_target"]);
-	colnames(bg_ratio) <- c("bg_ratio");
 
 	# reduce raw data to quantiles
 	percentiles <- apply(data, 2, quantile, prob = quantiles, na.rm = TRUE)
@@ -47,7 +41,7 @@ load <- function(files, quantiles) {
 	rownames(sched_perc) <- paste("sched", sep = "-", quantiles * 100);
 
 	# combine everything
-	df <- data.frame(xlab, bg_ratio, fgbw, t(percentiles), t(sched_perc))
+	df <- data.frame(fgbw, t(percentiles), t(sched_perc))
 }
 
 # extract max 99.0th percentile latency (and achieved bandwidth) or bandwidth (and achieved latency) – "what" parameter
@@ -58,10 +52,10 @@ find_max <- function(data, what, output) {
 	# we only have either latency or bandwidth; we want both!
 	df.max <- merge(df.agg, data)
 	# we have all; but we just want the config (trim, work, sched, bs) and bw + latency)
-	df.max.subset <- select(df.max, trim, work, sched, bs, bg_bw, X99.9)
+	df.max.subset <- select(df.max, trim, work, sched, bs, bg_total, X99.9)
 	# and now rename the columns to reflect the meaning of the selected data:
 	# max achieved background bandwidth and corresponding latency and vice-versa.
-	df.max.subset <- rename(df.max.subset, max_bg_bw = bg_bw, max_X99.9 = X99.9)
+	df.max.subset <- rename(df.max.subset, max_bg_bw = bg_total, max_X99.9 = X99.9)
 
 	# data filtering complete!
 
@@ -122,5 +116,5 @@ rawdata <- apply(combinations, 1, function(config) {
 
 data <-rbindlist(rawdata, fill=TRUE)
 
-find_max(data, bg_bw ~ trim + work + sched + bs, "generated/data/mb")
+find_max(data, bg_total ~ trim + work + sched + bs, "generated/data/mb")
 find_max(data, X99.9 ~ trim + work + sched + bs, "generated/data/ml")
