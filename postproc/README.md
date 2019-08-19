@@ -58,6 +58,16 @@ and maximum latency tables. Output files are:
 ```generated/data/mb```  
 ```generated/data/ml```
 
+The script ```extract_mysql.rb``` is used to extract benchmark results of the
+Sysbench ```*.res``` result files. The benchmark is executed twice: once with
+read-only background load (rob) and once with read-write background (rwb) load.
+
+The script places its output files in the ```generated/data``` directory.
+Accordingly, the generated files are:
+
+```generated/data/mysql_ro_rob.dat``` and  
+```generated/data/mysql_ro_rwb.dat```
+
 ## Step 3 - Generating TeX files
 
 The script ```table_data_to_tex.rb``` consumes the following files:
