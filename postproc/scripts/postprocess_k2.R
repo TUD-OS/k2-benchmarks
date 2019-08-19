@@ -48,6 +48,7 @@ load <- function(files, quantiles) {
 
 	# combine everything
 	df <- data.frame(fgbw, t(percentiles), t(sched_perc))
+	df <- rename(df, bg_bw_target = bw)
 }
 
 # extract max 99.0th percentile latency (and achieved bandwidth) or bandwidth (and achieved latency) – "what" parameter
