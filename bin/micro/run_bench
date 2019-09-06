@@ -36,11 +36,13 @@ case "$1" in
     TRIMTEXT="half";;
   "-t")
     TRIMTEXT="trim";;
+  [0-9][0-9])
+    TRIMTEXT="full_$1";;
   *)
     echo "Specify either -f, -h, or -t for trim state of drive!"
     exit 1;;
 esac
-BASEDIR="/home/rtss19/k2-results/res_micro_sc_${TRIMTEXT}_$DATE"
+BASEDIR="/home/rtss19/k2-results/res_sc_micro_${TRIMTEXT}_$DATE"
 
 # the collection of I/O schedulers to test in this run. Multiple schedulers
 # must be separated with a space. There are shortcuts for the most common queue 
@@ -141,9 +143,6 @@ if [ $? -ne 0 ]
 else
   DEVSIZE=`echo $DEVSIZE | cut -d' ' -f2`
 fi
-# further variables to be used for device initialization
-(( DEVSIZE_HALF = $DEVSIZE / 2))
-(( DDCOUNT = $DEVSIZE_HALF / 1048576))   # dd should run with a block size of 1M
 
 # invoke exit handler when aborting the program
 trap abort SIGINT
@@ -163,6 +162,13 @@ case "$1" in
   "-h")
     # write first half of disk, erase the second one
     # erasure of the second half is done directly before each benchmark
+    # dd should run with a block size of 1M
+    (( DDCOUNT = $DEVSIZE / 2 / 1048576 ))
+    dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k count=${DDCOUNT} status=progress;;
+  [0-9][0-9])
+    typeset -i PERC        # percentage of the drive that should be filled
+    PERC=$1
+    (( DDCOUNT = $DEVSIZE / 100 * PERC / 1048576 ))
     dd if=/dev/zero of=/dev/${DEVNAME} bs=1024k count=${DDCOUNT} status=progress;;
 esac
 sync
@@ -290,9 +296,15 @@ for SCHED in $SCHEDS
         case "$1" in
           "-h")
             # write first half of disk (done before), erase the second one
+	    (( DEVSIZE_HALF = $DEVSIZE / 2 ))
             blkdiscard -o $DEVSIZE_HALF /dev/${DEVNAME};;
           "-t")
             blkdiscard /dev/${DEVNAME};;
+	  [0-9][0-9])
+	    typeset -i OFFSET_PERC           # offset for trimming in percentage
+            OFFSET_PERC=$1
+	    (( TRIM_OFFS = $DEVSIZE / 100 * OFFSET_PERC ))
+	    blkdiscard -o $TRIM_OFFS /dev/${DEVNAME};;
         esac
         sync
 

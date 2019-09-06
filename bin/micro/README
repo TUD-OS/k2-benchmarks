@@ -32,7 +32,11 @@ whole device with zeroes. The third option is a tradeoff of both, where the
 first 50% of the device are allocated, while the second half is trimmed. You can
 specify either of the states by passing certain command line switches as the
 first argument to the benchmark scripts. Use -t, -f and -h to run the tests on
-a fully trimmed, fully allocated, or half-trimmed drive respectively.
+a fully trimmed, fully allocated, or half-trimmed drive respectively. Lastly,
+it is also possible to specify the share of the disk that should be filled in
+percent. To do so, use a two-digit integer number as the first argument. Note
+that is will only allow for shares between 00 and 99%. To fill the test drive
+completely, you will have to stick to the -f option.
 
 During running the benchmarks, directories with trace files of the kernel will
 be created. These directories can consume up to 50GB of space, so make sure
