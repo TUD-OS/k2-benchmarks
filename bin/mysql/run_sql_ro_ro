@@ -40,12 +40,20 @@ if [ `id -u` -ne 0 ]
   exit 1
 fi
 
+# check if block device $DEVNAME actually exists
+DEVSIZE=`lsblk -b -o NAME,SIZE | grep $DEVNAME`
+if [ $? -ne 0 ]
+  then
+  echo "$DEVNAME does not appear to be a valid block device..."
+  exit 2
+fi
+
 # first clear mountpoint
 mountpoint -q /mnt
 if [ $? -eq 0 ]
   then
   echo "Umount volume at /mnt before proceeding"
-  exit 2
+  exit 3
 fi
 
 # try to load the K2 module. If it is not present, exit with an error message
@@ -54,7 +62,7 @@ lsmod | grep "k2" > /dev/null
 if [ $? -ne 0 ]
   then
   echo "FATAL: could not load K2 kernel module."
-  exit 3
+  exit 4
 fi
 
 # create the result directory
