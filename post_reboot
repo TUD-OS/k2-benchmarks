@@ -14,6 +14,8 @@ stty echo
 
 echo "Building K2 I/O scheduler..."
 cd ~/k2-src/k2-scheduler/
+# checkout version used for generating the results of the RTSS19 submission
+git checkout k2-rtss19
 make
 echo "$ROOTPW" | sudo -kS make install
 
