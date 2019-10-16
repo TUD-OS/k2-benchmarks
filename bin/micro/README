@@ -62,7 +62,10 @@ run_bench                  - Main benchmark script. Outputs a file tree
 			     the K2 scheduler can be set. This setting is
 			     optional. If not given, and no K2 shortcut is used
 			     (see the SCHEDS variable in the script), the 
-			     inflight queue depth of K2 defaults to 32.
+			     inflight queue depth of K2 defaults to 32. There
+			     are aliases for running K2 with a queue depth of
+			     1, 8, 16 and 32 (k2_1, k2_8, k2_16 and k2_32,
+			     respectively).
 
 			     For example the call "./run_bench -t 75 64" will
 			     start the latency benchmarks for the combinations

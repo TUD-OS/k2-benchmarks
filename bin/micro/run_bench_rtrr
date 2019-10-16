@@ -220,6 +220,9 @@ for SCHED in $SCHEDS
         then
         echo $2 > /sys/block/${DEVNAME}/queue/iosched/max_inflight
       fi;;
+    k2_1 )                                                                      
+      echo "k2" > /sys/block/${DEVNAME}/queue/scheduler                         
+      echo "1"  > /sys/block/${DEVNAME}/queue/iosched/max_inflight;;            
     k2_8 )                                                                      
       echo "k2" > /sys/block/${DEVNAME}/queue/scheduler                         
       echo "8"  > /sys/block/${DEVNAME}/queue/iosched/max_inflight;;            
