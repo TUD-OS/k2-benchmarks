@@ -22,7 +22,7 @@ read DEVNAME
 BENCH=`cat bin/micro/run_bench | awk -v dev="$DEVNAME" -v usr="$USER" '
     /^DEVNAME=*/ { print("DEVNAME=\"" dev "\""); next; }
     /^BASEDIR=*/ { 
-        print("BASEDIR=\"/home/" usr "/k2-results/res_sc_micro_${TRIMTEXT}\"");
+        print("BASEDIR=\"/home/" usr "/k2-results/res_micro_sc_${TRIMTEXT}\"");
 	next;
         }
     /^SCHEDS=*/ {
@@ -150,10 +150,10 @@ echo "$ROOTPW" | sudo -kS ./run_sql_ro_rw
 cd ../..
 
 # glue result trees together
-for SCHED in "none bfq mq-deadline kyber k2_8 k2_16 k2_32"
+for SCHED in none bfq mq-deadline kyber k2_8 k2_16 k2_32
   do
   echo "$ROOTPW" | sudo -kS mv /home/${SUDO_USER}/k2-results/res_rtrr/${SCHED}/* \
-                               /home/${SUDO_USER}/k2-results/res_sc_micro_half/${SCHED}/
+                               /home/${SUDO_USER}/k2-results/res_micro_sc_half/${SCHED}/
 done
 echo "$ROOTPW" | sudo -kS rm -rf /home/${SUDO_USER}/k2-results/res_rtrr
 
